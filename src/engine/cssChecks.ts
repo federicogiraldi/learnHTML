@@ -80,7 +80,7 @@ export function canonicalColor(doc: Document, color: string): string {
   return out;
 }
 
-const COLOR_PROPS = /color|background-color|border-.*color|outline-color|fill|stroke/;
+const COLOR_PROPS = /^(color|background-color|border-(top|right|bottom|left)-color|outline-color|text-decoration-color|caret-color|accent-color|fill|stroke)$/;
 
 /**
  * The computed value of `prop` on the first element matching `selector`. String expectations for colour

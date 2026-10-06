@@ -60,9 +60,12 @@ export function atViewportWidth<T>(doc: Document, width: number, fn: () => T): T
   if (!el) return fn();
   const prev = el.style.width;
   el.style.width = `${width}px`;
+  // Force a layout pass so viewport units and media queries see the new width.
+  void doc.documentElement.getBoundingClientRect();
   try {
     return fn();
   } finally {
     el.style.width = prev;
+    void doc.documentElement.getBoundingClientRect();
   }
 }
