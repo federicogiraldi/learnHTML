@@ -1,11 +1,14 @@
-# LearnHTML
+# LearnWeb
 
-An interactive course for learning HTML, from your first tag to accessible, semantic, production-ready pages.
+Interactive courses for learning **HTML** and **CSS**, from your first tag to responsive, themed,
+production-ready pages.
 
 Each lesson explains one idea, then gives you a code editor, a live preview and a checklist that updates as
 you type. Every module ends with a challenge, scored with up to three stars.
 
-## Course
+## Courses
+
+### HTML — 8 modules, 36 lessons
 
 | # | Module | Challenge |
 |---|---|---|
@@ -18,29 +21,53 @@ you type. Every module ends with a challenge, scored with up to three stars.
 | 7 | Accessibility | Accessibility audit (blind) |
 | 8 | Advanced HTML | Capstone: portfolio site |
 
-There's also a **Playground** for free practice. Progress and code are saved in your browser's localStorage;
-use *Export / Import progress* on the home page to move them to another device.
+### CSS — 8 modules, 38 lessons
+
+| # | Module | Challenge |
+|---|---|---|
+| 1 | CSS Basics | Style the business card (target) |
+| 2 | Selectors & the Cascade | Specificity wars (blind) |
+| 3 | Typography | A readable article (target) |
+| 4 | The Box Model | Recreate the product card (target) |
+| 5 | Flexbox | Navbar and footer (target) |
+| 6 | CSS Grid | Magazine front page (target) |
+| 7 | Responsive Design | Landing page at three breakpoints (target) |
+| 8 | Advanced CSS | Capstone: style your portfolio |
+
+*Blind* challenges reveal each requirement only once it passes. *Target* challenges show the design to recreate
+in a tab next to your preview.
+
+CSS lessons have two files, `style.css` and `index.html`. The **Playground** has both too.
+Progress and code are saved in your browser's localStorage; use *Export / Import progress* on the home page to
+move them to another device.
 
 ## Development
 
 ```sh
 npm install
 npm run dev      # http://localhost:5173
-npm test         # engine unit tests + every lesson's solution must pass, every starter must fail
+npm test         # unit tests (jsdom) + CSS tests in headless Chromium
 npm run lint
 npm run build
 ```
 
+The CSS tests run in a real browser through Vitest browser mode. If Playwright's Chromium is missing locally,
+install it with `npx playwright install chromium`.
+
 ## How it works
 
-- `src/content/modules/*.ts` — one file per module. A lesson is markdown, starter code, a list of tasks
-  (each a `check` function), hints and a solution.
-- `src/engine/checks.ts` — reusable checks (`hasElement`, `count`, `hasAttr`, `controlsLabelled`, `headingOrder`, …).
-- `src/engine/validator.ts` — reports the mistakes browsers silently repair: unclosed or mis-nested tags,
-  invalid nesting, duplicate attributes. Every lesson implicitly requires well-formed HTML.
-- `src/components/Preview.tsx` — the user's code runs in a sandboxed `<iframe srcdoc>`.
+- `src/content/html/*.ts`, `src/content/css/*.ts` — one file per module. A lesson is markdown, starter code
+  (plus `starterCss` for CSS lessons), a list of tasks (each a `check` function), hints and a solution.
+- `src/engine/checks.ts` — DOM checks for HTML lessons (`hasElement`, `count`, `controlsLabelled`, …).
+- `src/engine/cssChecks.ts` — CSS checks: declared values (`declares`), computed styles (`computed`) and layout
+  (`inOneRow`, `stacked`, `centeredIn`, `columns`, `atWidth` for media queries).
+- `src/engine/render.ts` — renders HTML + CSS in a hidden, script-less frame so CSS checks see real styles and
+  layout. `combine()` loads the CSS where the page links `style.css`.
+- `src/engine/validator.ts`, `src/engine/cssValidator.ts` — report the mistakes browsers silently repair or
+  skip: unclosed tags, invalid nesting, missing semicolons, unknown properties, invalid values and selectors.
+- Every lesson's solution must pass all its tasks, and its starter code must not (`src/content/*.test.ts`).
 
 ## Deploy
 
-`.github/workflows/deploy.yml` tests, builds and deploys `main` to GitHub Pages. Enable it once under
-*Settings → Pages → Source: GitHub Actions*.
+`.github/workflows/deploy.yml` tests, builds and deploys `main` to GitHub Pages
+(*Settings → Pages → Source: GitHub Actions*).

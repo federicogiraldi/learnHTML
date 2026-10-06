@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { combine } from '../engine/render';
 
 /**
  * Injected into the preview so same-page links scroll instead of navigating the iframe
@@ -25,18 +26,19 @@ document.addEventListener('submit', function (e) {
 });
 </script>`;
 
-export function Preview({ code, title = 'Preview' }: { code: string; title?: string }) {
-  const [doc, setDoc] = useState(code);
+/** Renders the learner's page. With `css`, it is loaded as the page's style.css. */
+export function Preview({ code, css, title = 'Preview' }: { code: string; css?: string; title?: string }) {
+  const [doc, setDoc] = useState(() => combine(code, css, SHIM));
   useEffect(() => {
-    const t = setTimeout(() => setDoc(code), 300);
+    const t = setTimeout(() => setDoc(combine(code, css, SHIM)), 300);
     return () => clearTimeout(t);
-  }, [code]);
+  }, [code, css]);
   return (
     <iframe
       className="preview"
       title={title}
       sandbox="allow-scripts allow-forms allow-modals allow-popups"
-      srcDoc={SHIM + doc}
+      srcDoc={doc}
     />
   );
 }

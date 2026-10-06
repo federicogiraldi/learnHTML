@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { findItem } from '../content';
-import type { Challenge } from '../content/types';
-import { CodeEditor } from '../components/CodeEditor';
+import { isCssLesson, type Challenge } from '../content/types';
+import { CodeEditor, type EditorLanguage } from '../components/CodeEditor';
 import { HintBox } from '../components/HintBox';
 import { Markdown } from '../components/Markdown';
 import { Preview } from '../components/Preview';
@@ -12,6 +12,8 @@ import { progress, useProgress } from '../store/progress';
 
 /** Failed submissions before a challenge offers its solution. */
 const ATTEMPTS_FOR_SOLUTION = 3;
+/** Live checks wait for a pause in typing (CSS lessons render a whole page per run). */
+const CHECK_DELAY_MS = 250;
 
 type Tab = 'learn' | 'code' | 'preview';
 
@@ -26,33 +28,49 @@ export function Workspace({ id }: { id: string }) {
     return (
       <main className="page">
         <h1>Lesson not found</h1>
-        <Link to="/">Back to the course</Link>
+        <Link to="/">Back to the courses</Link>
       </main>
     );
   }
   return <WorkspaceInner {...found} />;
 }
 
-function WorkspaceInner({ module, item, isChallenge, prev, next }: NonNullable<ReturnType<typeof findItem>>) {
+function WorkspaceInner({ course, module, item, isChallenge, prev, next }: NonNullable<ReturnType<typeof findItem>>) {
   const state = useProgress();
   const completion = state.completed[item.id];
+  const cssMode = isCssLesson(item);
+  const cssKey = `${item.id}:css`;
+
   const [code, setCode] = useState(() => progress.get().code[item.id] ?? item.starterCode);
+  const [css, setCss] = useState(() => progress.get().code[cssKey] ?? item.starterCss ?? '');
+  const [file, setFile] = useState<EditorLanguage>(cssMode ? 'css' : 'html');
   const [hintsShown, setHintsShown] = useState(0);
   const [solutionShown, setSolutionShown] = useState(false);
   const [tab, setTab] = useState<Tab>('learn');
+  const [view, setView] = useState<'result' | 'target'>('result');
+
+  // Debounced snapshot of the code that the live checks run against.
+  const [checked, setChecked] = useState({ code, css });
+  useEffect(() => {
+    const t = setTimeout(() => setChecked({ code, css }), CHECK_DELAY_MS);
+    return () => clearTimeout(t);
+  }, [code, css]);
 
   // Lessons check live; challenges only on submit.
-  const live = useMemo(() => runTests(item, code), [item, code]);
-  const [submitted, setSubmitted] = useState<{ run: TestRun; code: string } | null>(null);
+  const live = useMemo(() => runTests(item, checked.code, checked.css), [item, checked]);
+  const [submitted, setSubmitted] = useState<{ run: TestRun; code: string; css: string } | null>(null);
   const [attempts, setAttempts] = useState(0);
   const [now, setNow] = useState(() => Date.now());
   const startedAt = useRef(Date.now());
   const [finishedMs, setFinishedMs] = useState<number | null>(null);
 
   useEffect(() => {
-    const t = setTimeout(() => progress.saveCode(item.id, code), 400);
+    const t = setTimeout(() => {
+      progress.saveCode(item.id, code);
+      if (cssMode) progress.saveCode(cssKey, css);
+    }, 400);
     return () => clearTimeout(t);
-  }, [item.id, code]);
+  }, [item.id, cssKey, cssMode, code, css]);
 
   useEffect(() => {
     if (!isChallenge || finishedMs !== null) return;
@@ -68,8 +86,8 @@ function WorkspaceInner({ module, item, isChallenge, prev, next }: NonNullable<R
   const challengeStars = solutionShown ? 1 : Math.max(1, 3 - hintsShown);
 
   const submit = () => {
-    const run = runTests(item, code);
-    setSubmitted({ run, code });
+    const run = runTests(item, code, css);
+    setSubmitted({ run, code, css });
     if (run.allPassed) {
       const ms = Date.now() - startedAt.current;
       setFinishedMs(ms);
@@ -79,20 +97,33 @@ function WorkspaceInner({ module, item, isChallenge, prev, next }: NonNullable<R
     }
   };
 
-  const loadCode = (c: string) => {
-    setCode(c);
+  const tryIt = (snippet: string, lang: EditorLanguage) => {
+    if (lang === 'css' && cssMode) setCss(snippet);
+    else setCode(snippet);
+    setFile(lang === 'css' && cssMode ? 'css' : 'html');
+    setTab('code');
+  };
+
+  const loadSolution = () => {
+    setCode(item.solution);
+    if (cssMode) setCss(item.solutionCss ?? '');
     setTab('code');
   };
 
   const reset = () => {
-    if (code !== item.starterCode && !confirm('Replace your code with the starting code?')) return;
-    setCode(item.starterCode);
+    const isCss = file === 'css';
+    const current = isCss ? css : code;
+    const starter = isCss ? (item.starterCss ?? '') : item.starterCode;
+    if (current !== starter && !confirm(`Replace ${isCss ? 'style.css' : 'index.html'} with the starting code?`)) return;
+    if (isCss) setCss(starter);
+    else setCode(starter);
   };
 
   const canSeeSolution = !isChallenge || attempts >= ATTEMPTS_FOR_SOLUTION || !!completion;
   const results = isChallenge ? (submitted?.run.results ?? live.results) : live.results;
   const passed = isChallenge ? submitted?.run.allPassed === true : live.allPassed;
-  const stale = isChallenge && submitted && submitted.code !== code;
+  const stale = isChallenge && submitted && (submitted.code !== code || submitted.css !== css);
+  const showTarget = isChallenge && (item as Challenge).showTarget;
 
   return (
     <main className={`workspace tab-${tab}`}>
@@ -107,7 +138,7 @@ function WorkspaceInner({ module, item, isChallenge, prev, next }: NonNullable<R
       <section className="pane learn-pane" aria-label="Instructions">
         <div className="learn-scroll">
           <p className="crumbs">
-            <Link to="/">Course</Link> / {module.title}
+            <Link to={`/course/${course.id}`}>{course.title} course</Link> / {module.title}
           </p>
           <h1>
             {isChallenge && <span aria-hidden="true">🏆 </span>}
@@ -122,7 +153,7 @@ function WorkspaceInner({ module, item, isChallenge, prev, next }: NonNullable<R
               {completion?.stars && <span>Best stars: {'★'.repeat(completion.stars)}</span>}
             </p>
           )}
-          <Markdown source={item.explanation} onTryIt={loadCode} />
+          <Markdown source={item.explanation} onTryIt={tryIt} />
 
           <h2>{isChallenge ? 'Requirements' : 'Your tasks'}</h2>
           {stale && <p className="note">You edited the code since your last check.</p>}
@@ -150,8 +181,8 @@ function WorkspaceInner({ module, item, isChallenge, prev, next }: NonNullable<R
                   Next: {next.item.title} →
                 </Link>
               ) : (
-                <Link className="btn primary" to="/">
-                  You finished the course 🎉
+                <Link className="btn primary" to={`/course/${course.id}`}>
+                  You finished the {course.title} course 🎉
                 </Link>
               )}
             </div>
@@ -163,10 +194,19 @@ function WorkspaceInner({ module, item, isChallenge, prev, next }: NonNullable<R
             {solutionShown ? (
               <>
                 <h2>Solution</h2>
+                {cssMode && (
+                  <>
+                    <h3 className="file-label">style.css</h3>
+                    <pre>
+                      <code>{item.solutionCss}</code>
+                    </pre>
+                    <h3 className="file-label">index.html</h3>
+                  </>
+                )}
                 <pre>
                   <code>{item.solution}</code>
                 </pre>
-                <button type="button" className="btn small ghost" onClick={() => loadCode(item.solution)}>
+                <button type="button" className="btn small ghost" onClick={loadSolution}>
                   Load into editor
                 </button>
               </>
@@ -197,19 +237,48 @@ function WorkspaceInner({ module, item, isChallenge, prev, next }: NonNullable<R
 
       <section className="pane editor-pane" aria-label="Code editor">
         <div className="pane-bar">
-          <span>index.html</span>
+          {cssMode ? (
+            <div className="file-tabs" role="tablist" aria-label="Files">
+              {(['css', 'html'] as EditorLanguage[]).map((f) => (
+                <button key={f} type="button" role="tab" aria-selected={file === f} onClick={() => setFile(f)}>
+                  {f === 'css' ? 'style.css' : 'index.html'}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <span>index.html</span>
+          )}
           <button type="button" className="btn small ghost" onClick={reset}>
             Reset
           </button>
         </div>
-        <CodeEditor value={code} onChange={setCode} />
+        {file === 'css' ? (
+          <CodeEditor key="css" language="css" value={css} onChange={setCss} />
+        ) : (
+          <CodeEditor key="html" language="html" value={code} onChange={setCode} />
+        )}
       </section>
 
       <section className="pane preview-pane" aria-label="Preview">
         <div className="pane-bar">
-          <span>Preview</span>
+          {showTarget ? (
+            <div className="file-tabs" role="tablist" aria-label="Preview">
+              <button type="button" role="tab" aria-selected={view === 'result'} onClick={() => setView('result')}>
+                Your result
+              </button>
+              <button type="button" role="tab" aria-selected={view === 'target'} onClick={() => setView('target')}>
+                Target
+              </button>
+            </div>
+          ) : (
+            <span>Preview</span>
+          )}
         </div>
-        <Preview code={code} />
+        {view === 'target' && showTarget ? (
+          <Preview code={item.solution} css={item.solutionCss} title="Target design" />
+        ) : (
+          <Preview code={code} css={cssMode ? css : undefined} />
+        )}
       </section>
     </main>
   );

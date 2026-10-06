@@ -19,21 +19,29 @@
 }
 
 :root[data-theme='dark'] {
-  --bg: #121218;
-  --surface: #1b1b24;
-  --surface-2: #242430;
-  --text: #ececf3;
-  --muted: #a3a3b5;
-  --border: #33333f;
+  --bg: #0e0e13;
+  --surface: #15151c;
+  --surface-2: #1e1e28;
+  --text: #f0f0f6;
+  --muted: #b0b2c3;
+  --border: #2c2c3a;
   --accent: #ff7a50;
-  --accent-text: #1b1b24;
-  --accent-soft: #3a2420;
-  --pass: #5fd39b;
-  --pass-soft: #17322a;
-  --fail: #ff8a78;
-  --fail-soft: #3a1f1c;
-  --code-bg: #20202b;
+  --accent-text: #120c0a;
+  --accent-soft: #34201a;
+  --pass: #6ee0a8;
+  --pass-soft: #12291f;
+  --fail: #ff8f7e;
+  --fail-soft: #33191a;
+  --code-bg: #0b0b10;
   color-scheme: dark;
+}
+
+/* The editor is always dark, so its bar matches it in both themes. */
+:root {
+  --editor-bg: #0b0b10;
+  --editor-bar: #13131a;
+  --editor-border: #1d1d28;
+  --editor-text: #b9bccc;
 }
 
 * {
@@ -439,7 +447,38 @@ pre {
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  font-size: 14px;
+  font-size: 15px;
+  background: var(--editor-bg);
+}
+
+.editor-pane {
+  background: var(--editor-bg);
+}
+
+.editor-pane .pane-bar {
+  background: var(--editor-bar);
+  color: var(--editor-text);
+  border-bottom-color: var(--editor-border);
+}
+
+.editor-pane .pane-bar .btn.ghost {
+  color: var(--editor-text);
+  border-color: #33334a;
+}
+
+.editor-pane .pane-bar .btn.ghost:hover {
+  background: #1f1f2b;
+}
+
+.editor-pane .issues {
+  border-top-color: var(--editor-border);
+  background: var(--editor-bar);
+  color: #6ee0a8;
+}
+
+.editor-pane .issues.has-issues {
+  background: #33191a;
+  color: #ff8f7e;
 }
 
 .editor .cm-editor {
@@ -471,8 +510,26 @@ pre {
   max-width: 70ch;
 }
 
+.prose table {
+  border-collapse: collapse;
+  margin: 0.75rem 0;
+  font-size: 0.92rem;
+}
+
+.prose th,
+.prose td {
+  border: 1px solid var(--border);
+  padding: 0.35rem 0.6rem;
+  text-align: left;
+}
+
+.prose th {
+  background: var(--surface-2);
+}
+
 .prose code {
-  background: var(--code-bg);
+  color: var(--text);
+  background: var(--surface-2);
   padding: 0.1em 0.35em;
   border-radius: 4px;
 }
@@ -496,6 +553,19 @@ pre {
 .code-block pre code {
   background: none;
   padding: 0;
+}
+
+:root[data-theme='dark'] .code-block pre,
+:root[data-theme='dark'] .solution pre {
+  color: #e8e8f0;
+}
+
+:root[data-theme='dark'] .prose code {
+  color: #ffb79e;
+}
+
+:root[data-theme='dark'] .code-block pre code {
+  color: #e8e8f0;
 }
 
 .try-it {
@@ -595,6 +665,10 @@ pre {
     gap: 1rem;
   }
 
+  .topbar nav {
+    gap: 0.85rem;
+  }
+
   .workspace {
     grid-template-columns: 1fr;
     grid-template-rows: auto 1fr;
@@ -643,5 +717,80 @@ pre {
   .playground {
     grid-template-columns: 1fr;
     grid-template-rows: 1fr 1fr;
+  }
+}
+
+/* ---------- multi-course ---------- */
+.course-switch {
+  display: inline-flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  margin-top: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.course-switch a {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.4rem 1rem;
+  border-radius: 7px;
+  color: var(--muted);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.course-switch a span {
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.course-switch a.active {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+/* file tabs in the (always dark) editor bar and in the preview bar */
+.file-tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin: -0.35rem 0;
+}
+
+.file-tabs button {
+  padding: 0.45rem 0.8rem;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.file-tabs button[aria-selected='true'] {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+.editor-pane .file-tabs button[aria-selected='true'] {
+  color: #f0f0f6;
+}
+
+.file-label {
+  font-size: 0.85rem;
+  font-family: ui-monospace, monospace;
+  color: var(--muted);
+  margin: 0.75rem 0 0.3rem;
+}
+
+@media (max-width: 480px) {
+  .logo-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
   }
 }

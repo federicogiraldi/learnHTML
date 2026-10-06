@@ -7,7 +7,7 @@ import { progress, useProgress } from './store/progress';
 
 function ThemeToggle() {
   const { theme } = useProgress();
-  const current = theme ?? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  const current = theme ?? 'dark';
   useEffect(() => {
     document.documentElement.dataset.theme = current;
   }, [current]);
@@ -23,6 +23,8 @@ function ThemeToggle() {
   );
 }
 
+const isHome = () => location.hash === '' || location.hash === '#/';
+
 function LessonRoute() {
   const { id = '' } = useParams();
   return <Workspace key={id} id={id} />;
@@ -33,18 +35,20 @@ export function App() {
     <HashRouter>
       <header className="topbar">
         <Link to="/" className="logo">
-          <span aria-hidden="true">&lt;/&gt;</span> LearnHTML
+          <span aria-hidden="true">&lt;/&gt;</span> <span className="logo-text">LearnWeb</span>
         </Link>
         <nav aria-label="Main">
-          <NavLink to="/" end>
-            Course
+          <NavLink to="/course/html" className={({ isActive }) => (isActive || isHome() ? 'active' : '')}>
+            HTML
           </NavLink>
+          <NavLink to="/course/css">CSS</NavLink>
           <NavLink to="/playground">Playground</NavLink>
         </nav>
         <ThemeToggle />
       </header>
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/course/:courseId" element={<Home />} />
         <Route path="/learn/:id" element={<LessonRoute />} />
         <Route path="/playground" element={<Playground />} />
         <Route
