@@ -118,13 +118,13 @@ export const px = (v: string) => parseFloat(v) || 0;
 
 const rect = (doc: Document, selector: string) => doc.querySelector(selector)?.getBoundingClientRect();
 
-/** The elements matching `selector` sit side by side on one row (same top, increasing left). */
+/** The elements matching `selector` sit side by side on one row: each starts after the previous one ends, overlapping vertically. */
 export const inOneRow =
   (selector: string, message?: string): Check =>
   (doc) => {
     const rs = [...doc.querySelectorAll(selector)].map((e) => e.getBoundingClientRect());
     if (rs.length < 2) return `Need at least two "${selector}" elements.`;
-    const ok = rs.every((r, k) => k === 0 || (Math.abs(r.top - rs[0].top) < 2 && r.left > rs[k - 1].left));
+    const ok = rs.every((r, k) => k === 0 || (r.left >= rs[k - 1].right - 1 && r.top < rs[k - 1].bottom && r.bottom > rs[k - 1].top));
     return ok ? true : (message ?? `The "${selector}" elements should sit side by side in one row.`);
   };
 

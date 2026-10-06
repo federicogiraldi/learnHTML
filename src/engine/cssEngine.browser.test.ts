@@ -76,3 +76,9 @@ describe('css checks', () => {
     expect(columns('.grid', 2)(doc, html, css)).toBe(true);
   });
 });
+
+describe('validateCss strings', () => {
+  it('validates values that contain strings', () => {
+    expect(validateCss('.a { grid-template-areas: "h h" "s m"; content: "x;y{"; font-family: "Lora", serif; }')).toEqual([]);
+  });
+});

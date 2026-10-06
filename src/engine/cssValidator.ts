@@ -38,7 +38,9 @@ export function validateCss(css: string): Issue[] {
   const stack: Ctx[] = [{ kind: 'rules', open: -1 }];
   let start = 0;
 
-  const declaration = (text: string, at: number) => {
+  const declaration = (masked: string, at: number) => {
+    // `masked` hides strings and comments; offsets match, so read the real text back for the value.
+    const text = css.slice(at, at + masked.length).replace(/\/\*[\s\S]*?\*\//g, (c) => c.replace(/[^\n]/g, ' '));
     const trimmed = text.trim();
     if (!trimmed) return;
     const line = lineOf(at + text.indexOf(trimmed));
