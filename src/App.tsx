@@ -7,7 +7,7 @@ import { progress, useProgress } from './store/progress';
 
 function ThemeToggle() {
   const { theme } = useProgress();
-  const current = theme ?? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  const current = theme ?? 'dark';
   useEffect(() => {
     document.documentElement.dataset.theme = current;
   }, [current]);
