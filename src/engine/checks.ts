@@ -194,9 +194,9 @@ export const anchorsResolve =
 
 export const all =
   (...checks: Check[]): Check =>
-  (doc, raw) => {
+  (doc, raw, css) => {
     for (const c of checks) {
-      const r = c(doc, raw);
+      const r = c(doc, raw, css);
       if (r !== true) return r;
     }
     return true;

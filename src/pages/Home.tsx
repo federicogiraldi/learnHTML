@@ -1,28 +1,54 @@
 import { useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { course, isModuleComplete, isModuleUnlocked, modules } from '../content';
+import { Link, Navigate, NavLink, useParams } from 'react-router-dom';
+import { courseItems, courses, getCourse, isModuleComplete, isModuleUnlocked } from '../content';
 import { ProgressBar } from '../components/ProgressBar';
 import { progress, useProgress } from '../store/progress';
 
 const stars = (n = 0) => '★'.repeat(n) + '☆'.repeat(3 - n);
 
 export function Home() {
+  const { courseId = 'html' } = useParams();
+  const course = getCourse(courseId);
   const state = useProgress();
-  const done = course.filter((c) => state.completed[c.item.id]).length;
-  const resume = course.find((c) => !state.completed[c.item.id] && isModuleUnlocked(c.module, state));
+  if (!course) return <Navigate to="/" replace />;
+
+  const items = courseItems(course);
+  const modules = course.modules;
+  const done = items.filter((c) => state.completed[c.item.id]).length;
+  const resume = items.find((c) => !state.completed[c.item.id] && isModuleUnlocked(course, c.module, state));
 
   return (
     <main className="page">
       <section className="hero">
-        <h1>Learn HTML by writing it.</h1>
+        <div className="course-switch" role="tablist" aria-label="Courses">
+          {courses.map((c) => {
+            const its = courseItems(c);
+            const n = its.filter((i) => state.completed[i.item.id]).length;
+            return (
+              <NavLink
+                key={c.id}
+                to={`/course/${c.id}`}
+                role="tab"
+                aria-selected={c.id === course.id}
+                className={c.id === course.id ? 'active' : ''}
+              >
+                {c.title}
+                <span>
+                  {n}/{its.length}
+                </span>
+              </NavLink>
+            );
+          })}
+        </div>
+        <h1>Learn {course.title} by writing it.</h1>
         <p>
-          {modules.length} modules from your first tag to accessible, semantic, production-ready pages. Every lesson
-          explains one idea, then hands you an editor and a checklist. Every module ends with a challenge.
+          {modules.length} modules. {course.tagline} Every lesson explains one idea, then hands you an editor and a
+          checklist. Every module ends with a challenge.
         </p>
         <div className="hero-progress">
-          <ProgressBar value={done} max={course.length} label="Course progress" />
+          <ProgressBar value={done} max={items.length} label={`${course.title} course progress`} />
           <span>
-            {done} / {course.length} completed
+            {done} / {items.length} completed
           </span>
         </div>
         {resume && (
@@ -34,10 +60,10 @@ export function Home() {
 
       <ol className="modules">
         {modules.map((m, idx) => {
-          const unlocked = isModuleUnlocked(m, state);
+          const unlocked = isModuleUnlocked(course, m, state);
           const complete = isModuleComplete(m, state);
-          const items = [...m.lessons, m.challenge];
-          const n = items.filter((i) => state.completed[i.id]).length;
+          const mItems = [...m.lessons, m.challenge];
+          const n = mItems.filter((i) => state.completed[i.id]).length;
           return (
             <li key={m.id} className={`module-card ${unlocked ? '' : 'locked'} ${complete ? 'complete' : ''}`}>
               <div className="module-head">
@@ -47,7 +73,7 @@ export function Home() {
                   <p>{m.description}</p>
                 </div>
               </div>
-              <ProgressBar value={n} max={items.length} label={`${m.title} progress`} />
+              <ProgressBar value={n} max={mItems.length} label={`${m.title} progress`} />
               {unlocked ? (
                 <ul className="lesson-list">
                   {m.lessons.map((l) => (
