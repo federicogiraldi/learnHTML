@@ -665,6 +665,10 @@ pre {
     gap: 1rem;
   }
 
+  .topbar nav {
+    gap: 0.85rem;
+  }
+
   .workspace {
     grid-template-columns: 1fr;
     grid-template-rows: auto 1fr;
@@ -779,4 +783,14 @@ pre {
   font-family: ui-monospace, monospace;
   color: var(--muted);
   margin: 0.75rem 0 0.3rem;
+}
+
+@media (max-width: 480px) {
+  .logo-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
 }

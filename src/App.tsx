@@ -35,7 +35,7 @@ export function App() {
     <HashRouter>
       <header className="topbar">
         <Link to="/" className="logo">
-          <span aria-hidden="true">&lt;/&gt;</span> LearnWeb
+          <span aria-hidden="true">&lt;/&gt;</span> <span className="logo-text">LearnWeb</span>
         </Link>
         <nav aria-label="Main">
           <NavLink to="/course/html" className={({ isActive }) => (isActive || isHome() ? 'active' : '')}>

@@ -7,7 +7,8 @@ import { editorTheme } from './editorTheme';
 
 export type EditorLanguage = 'html' | 'css';
 
-// Auto-closing is off on purpose: writing closing tags yourself is part of learning HTML.
+// Auto-closing of tags and brackets is off on purpose: writing them yourself is part of learning,
+// and auto-inserted closers end up doubled when learners type their own.
 const extensions: Record<EditorLanguage, Extension[]> = {
   html: [html({ autoCloseTags: false }), EditorView.lineWrapping],
   css: [css(), EditorView.lineWrapping],
@@ -30,7 +31,7 @@ export function CodeEditor({
       extensions={extensions[language]}
       theme={editorTheme}
       height="100%"
-      basicSetup={{ tabSize: 2 }}
+      basicSetup={{ tabSize: 2, closeBrackets: false }}
       aria-label={language === 'css' ? 'CSS editor' : 'HTML editor'}
     />
   );
