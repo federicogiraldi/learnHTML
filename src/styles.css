@@ -715,3 +715,68 @@ pre {
     grid-template-rows: 1fr 1fr;
   }
 }
+
+/* ---------- multi-course ---------- */
+.course-switch {
+  display: inline-flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  margin-top: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.course-switch a {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.4rem 1rem;
+  border-radius: 7px;
+  color: var(--muted);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.course-switch a span {
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.course-switch a.active {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+/* file tabs in the (always dark) editor bar and in the preview bar */
+.file-tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin: -0.35rem 0;
+}
+
+.file-tabs button {
+  padding: 0.45rem 0.8rem;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.file-tabs button[aria-selected='true'] {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+.editor-pane .file-tabs button[aria-selected='true'] {
+  color: #f0f0f6;
+}
+
+.file-label {
+  font-size: 0.85rem;
+  font-family: ui-monospace, monospace;
+  color: var(--muted);
+  margin: 0.75rem 0 0.3rem;
+}
