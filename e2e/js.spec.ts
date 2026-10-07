@@ -120,3 +120,17 @@ test('every JavaScript lesson’s solution passes in the production build', asyn
     });
   }
 });
+
+test('JavaScript lessons work offline: the sandbox needs nothing from the network', async ({ page, context }) => {
+  await page.goto('./');
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  if (!(await page.evaluate(() => !!navigator.serviceWorker.controller))) await page.reload();
+  await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
+
+  await context.setOffline(true);
+  await page.goto('./#/learn/js-basics-variables');
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Variables: let and const' })).toBeVisible();
+  await page.getByRole('button', { name: '▶ Run' }).first().click();
+  await expect(page.getByRole('region', { name: 'Console', exact: true }).getByText('Rome 3')).toBeVisible();
+});
