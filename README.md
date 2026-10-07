@@ -57,6 +57,13 @@ parses — never half-typed. The **Playground** has all three files and the cons
 Progress and code are saved in your browser's localStorage; use *Export / Import progress* on the home page to
 move them to another device.
 
+### English and Italian
+
+Every course is available in **English** and **Italian**. The **EN / IT** button in the top bar switches the interface,
+the lessons, the hints and the check messages at any time, even in the middle of a lesson: your code, progress and
+console stay as they are. The choice is saved with your progress. Code (starter files, examples, solutions) stays in
+English in both languages, so the checks are the same.
+
 ### Keeping progress safe
 
 - On start the app asks the browser for **persistent storage** (`navigator.storage.persist()`), so progress is not
@@ -115,6 +122,13 @@ install it with `npx playwright install chromium`.
   validity checks for page lessons.
 - Every lesson's solution must pass all its tasks, and its starter code must not (`src/content/*.test.ts`). The e2e tests also run every
   JavaScript solution in the production build.
+- `src/i18n/` — the interface strings (`strings.ts`, English and Italian) and `messages.ts`, which translates check and
+  validator messages: exact matches from the lessons first, then patterns for the engine's built-in messages; anything
+  unknown stays in English.
+- `src/content/it/` — the Italian text of each module (titles, explanations, task texts, hints, summaries and the
+  module's own check messages), keyed by lesson id. `localizeCourse()` (`src/content/localize.ts`) swaps the words and
+  keeps every check. `src/content/i18n.test.ts` fails if a lesson is missing, if the task or hint count differs from
+  English, or if a code example was changed.
 
 ## Deploy
 

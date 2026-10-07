@@ -34,6 +34,16 @@ describe('saved progress', () => {
     expect(JSON.parse(progress.export())).toMatchObject({ lastExportAt: 1000 });
   });
 
+  it('saves the chosen language and keeps it, like the theme, on reset', async () => {
+    const { progress } = await loadStore();
+    progress.setTheme('light');
+    progress.setLang('it');
+    progress.complete('html-1-1');
+    progress.reset();
+    expect(progress.get()).toEqual(state({ theme: 'light', lang: 'it' }));
+    expect(JSON.parse(localStorage.getItem(KEY)!).lang).toBe('it');
+  });
+
   it('runs registered flushers on flush until they unsubscribe', async () => {
     const { progress } = await loadStore();
     const save = vi.fn();

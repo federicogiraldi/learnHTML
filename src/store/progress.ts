@@ -14,6 +14,8 @@ export interface ProgressState {
   /** Module ids unlocked manually ("skip ahead"). */
   unlocked: string[];
   theme?: 'light' | 'dark';
+  /** Interface and lesson language. English when unset. */
+  lang?: 'en' | 'it';
   /** When progress was last exported to a file. */
   lastExportAt?: number;
   /** When the backup reminder was last dismissed with "Not now". */
@@ -136,6 +138,10 @@ export const progress = {
     set({ ...state, theme });
   },
 
+  setLang(lang: 'en' | 'it') {
+    set({ ...state, lang });
+  },
+
   export(): string {
     return JSON.stringify(state, null, 2);
   },
@@ -157,6 +163,6 @@ export const progress = {
   },
 
   reset() {
-    set({ ...empty(), theme: state.theme });
+    set({ ...empty(), theme: state.theme, lang: state.lang });
   },
 };

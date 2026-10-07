@@ -1,6 +1,7 @@
 import ReactMarkdown from 'react-markdown';
 import type { EditorLanguage } from './CodeEditor';
 import remarkGfm from 'remark-gfm';
+import { useStrings } from '../i18n';
 
 const plugins = [remarkGfm];
 
@@ -12,6 +13,7 @@ const tryItLanguage = (className: string): EditorLanguage | null => {
 
 /** Lesson prose. Fenced ```html, ```css and ```js blocks get a "Try it" button that loads them into the editor. */
 export function Markdown({ source, onTryIt }: { source: string; onTryIt?: (code: string, lang: EditorLanguage) => void }) {
+  const t = useStrings();
   return (
     <div className="prose">
       <ReactMarkdown
@@ -31,7 +33,7 @@ export function Markdown({ source, onTryIt }: { source: string; onTryIt?: (code:
                 </pre>
                 {onTryIt && lang && (
                   <button type="button" className="btn small ghost try-it" onClick={() => onTryIt(code, lang)}>
-                    Try it ↗
+                    {t.tryIt}
                   </button>
                 )}
               </div>
