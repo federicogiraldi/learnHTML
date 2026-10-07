@@ -181,7 +181,8 @@ x.open('GET', 'https://example.org/');
 x.onerror = () => console.log('xhr blocked');
 x.send();`,
       },
-      { ms: 300, mocks },
+      // Unknown URLs reject after the default 300 ms fake delay: wait well past it, or the read races it.
+      { ms: 1000, mocks },
     );
     expect(texts(logs)).toContain('xhr blocked');
     expect(texts(logs).find((t) => t.startsWith('TypeError'))).toMatch(/no network.*api\.example\.com\/users\/1/);
