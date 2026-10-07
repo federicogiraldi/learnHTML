@@ -11,6 +11,7 @@ import { TestPanel } from '../components/TestPanel';
 import { hasSyntaxError } from '../engine/js/instrument';
 import { runJsTests, runTests, type TestRun } from '../engine/runTests';
 import { progress, useProgress } from '../store/progress';
+import { useLang, useStrings } from '../i18n';
 
 /** Failed submissions before a challenge offers its solution. */
 const ATTEMPTS_FOR_SOLUTION = 3;
@@ -35,12 +36,14 @@ const formatTime = (ms: number) => {
 };
 
 export function Workspace({ id }: { id: string }) {
-  const found = findItem(id);
+  const lang = useLang();
+  const t = useStrings();
+  const found = findItem(id, lang);
   if (!found) {
     return (
       <main className="page">
-        <h1>Lesson not found</h1>
-        <Link to="/">Back to the courses</Link>
+        <h1>{t.lessonNotFound}</h1>
+        <Link to="/">{t.backToCourses}</Link>
       </main>
     );
   }
@@ -49,6 +52,7 @@ export function Workspace({ id }: { id: string }) {
 
 function WorkspaceInner({ course, module, item, isChallenge, prev, next }: NonNullable<ReturnType<typeof findItem>>) {
   const state = useProgress();
+  const t = useStrings();
   const completion = state.completed[item.id];
   const jsMode = isJsLesson(item);
   const jsPage = isJsPageLesson(item);
@@ -197,7 +201,7 @@ function WorkspaceInner({ course, module, item, isChallenge, prev, next }: NonNu
   };
 
   const reset = () => {
-    if (values[file] !== starters[file] && !confirm(`Replace ${fileNames[file]} with the starting code?`)) return;
+    if (values[file] !== starters[file] && !confirm(t.confirmReplace(fileNames[file]))) return;
     setters[file](starters[file]);
   };
 
@@ -210,48 +214,48 @@ function WorkspaceInner({ course, module, item, isChallenge, prev, next }: NonNu
 
   return (
     <main className={`workspace tab-${tab}`}>
-      <div className="tabs" role="tablist" aria-label="Workspace panels">
-        {(['learn', 'code', 'preview'] as Tab[]).map((t) => (
-          <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => setTab(t)}>
-            {t === 'learn' ? (isChallenge ? 'Brief' : 'Lesson') : t === 'code' ? 'Code' : jsMode && !jsPage ? 'Console' : 'Preview'}
+      <div className="tabs" role="tablist" aria-label={t.workspacePanels}>
+        {(['learn', 'code', 'preview'] as Tab[]).map((p) => (
+          <button key={p} type="button" role="tab" aria-selected={tab === p} onClick={() => setTab(p)}>
+            {p === 'learn' ? (isChallenge ? t.tabBrief : t.tabLesson) : p === 'code' ? t.tabCode : jsMode && !jsPage ? t.tabConsole : t.tabPreview}
           </button>
         ))}
       </div>
 
-      <section className="pane learn-pane" aria-label="Instructions">
+      <section className="pane learn-pane" aria-label={t.instructions}>
         <div className="learn-scroll">
           <p className="crumbs">
-            <Link to={`/course/${course.id}`}>{course.title} course</Link> / {module.title}
+            <Link to={`/course/${course.id}`}>{t.courseCrumb(course.title)}</Link> / {module.title}
           </p>
           <h1>
             {isChallenge && <span aria-hidden="true">🏆 </span>}
             {item.title}
-            {completion && <span className="badge">Completed</span>}
+            {completion && <span className="badge">{t.completed}</span>}
           </h1>
           {isChallenge && (
             <p className="challenge-meta">
-              <span>Difficulty: {'🔥'.repeat((item as Challenge).difficulty)}</span>
+              <span>{t.difficulty}: {'🔥'.repeat((item as Challenge).difficulty)}</span>
               <span>⏱ {formatTime(finishedMs ?? now - startedAt.current)}</span>
-              {completion?.bestTimeMs !== undefined && <span>Best: {formatTime(completion.bestTimeMs)}</span>}
-              {completion?.stars && <span>Best stars: {'★'.repeat(completion.stars)}</span>}
+              {completion?.bestTimeMs !== undefined && <span>{t.best}: {formatTime(completion.bestTimeMs)}</span>}
+              {completion?.stars && <span>{t.bestStars}: {'★'.repeat(completion.stars)}</span>}
             </p>
           )}
           <Markdown source={item.explanation} onTryIt={tryIt} />
 
-          <h2>{isChallenge ? 'Requirements' : 'Your tasks'}</h2>
-          {stale && <p className="note">You edited the code since your last check.</p>}
-          {jsMode && !isChallenge && <p className="muted">Checks run when you press Run (or Ctrl+Enter).</p>}
+          <h2>{isChallenge ? t.requirements : t.yourTasks}</h2>
+          {stale && <p className="note">{t.staleNote}</p>}
+          {jsMode && !isChallenge && <p className="muted">{t.checksOnRun}</p>}
           <TestPanel results={results} hidden={isChallenge ? !submitted : !live} blind={isChallenge && (item as Challenge).blind} />
 
           {isChallenge && (
             <div className="row">
               <button type="button" className="btn primary" onClick={submit} disabled={checking}>
-                {checking ? 'Checking…' : 'Check my solution'}
+                {checking ? t.checking : t.checkSolution}
               </button>
               {!passed && (
                 <span className="muted">
-                  Worth {challengeStars} {challengeStars === 1 ? 'star' : 'stars'} now
-                  {attempts > 0 && ` · ${attempts} attempt${attempts === 1 ? '' : 's'}`}
+                  {t.worth(challengeStars)}
+                  {attempts > 0 && ` · ${t.attempts(attempts)}`}
                 </span>
               )}
             </div>
@@ -259,14 +263,14 @@ function WorkspaceInner({ course, module, item, isChallenge, prev, next }: NonNu
 
           {passed && (
             <div className="success" role="status">
-              <strong>{isChallenge ? `Challenge complete! ${'★'.repeat(challengeStars)}` : 'Nice work — all tasks done!'}</strong>
+              <strong>{isChallenge ? `${t.challengeComplete} ${'★'.repeat(challengeStars)}` : t.allDone}</strong>
               {next ? (
                 <Link className="btn primary" to={`/learn/${next.item.id}`}>
-                  Next: {next.item.title} →
+                  {t.next(next.item.title)} →
                 </Link>
               ) : (
                 <Link className="btn primary" to={`/course/${course.id}`}>
-                  You finished the {course.title} course 🎉
+                  {t.finishedCourse(course.title)}
                 </Link>
               )}
             </div>
@@ -277,7 +281,7 @@ function WorkspaceInner({ course, module, item, isChallenge, prev, next }: NonNu
           <div className="solution">
             {solutionShown ? (
               <>
-                <h2>Solution</h2>
+                <h2>{t.solution}</h2>
                 {files.map((f) => (
                   <div key={f}>
                     {files.length > 1 && <h3 className="file-label">{fileNames[f]}</h3>}
@@ -287,7 +291,7 @@ function WorkspaceInner({ course, module, item, isChallenge, prev, next }: NonNu
                   </div>
                 ))}
                 <button type="button" className="btn small ghost" onClick={loadSolution}>
-                  Load into editor
+                  {t.loadIntoEditor}
                 </button>
               </>
             ) : canSeeSolution ? (
@@ -295,30 +299,30 @@ function WorkspaceInner({ course, module, item, isChallenge, prev, next }: NonNu
                 type="button"
                 className="btn small ghost"
                 onClick={() =>
-                  (!isChallenge || completion || confirm('Seeing the solution limits this run to 1 star. Continue?')) &&
+                  (!isChallenge || completion || confirm(t.confirmSolution)) &&
                   setSolutionShown(true)
                 }
               >
-                Show solution
+                {t.showSolution}
               </button>
             ) : (
               <p className="muted">
-                The solution unlocks after {ATTEMPTS_FOR_SOLUTION} checks ({attempts}/{ATTEMPTS_FOR_SOLUTION}).
+                {t.solutionUnlocks(ATTEMPTS_FOR_SOLUTION, attempts)}
               </p>
             )}
           </div>
 
-          <nav className="pager" aria-label="Lesson navigation">
+          <nav className="pager" aria-label={t.lessonNav}>
             {prev ? <Link to={`/learn/${prev.item.id}`}>← {prev.item.title}</Link> : <span />}
             {next && <Link to={`/learn/${next.item.id}`}>{next.item.title} →</Link>}
           </nav>
         </div>
       </section>
 
-      <section className="pane editor-pane" aria-label="Code editor">
+      <section className="pane editor-pane" aria-label={t.codeEditor}>
         <div className="pane-bar">
           {files.length > 1 ? (
-            <div className="file-tabs" role="tablist" aria-label="Files">
+            <div className="file-tabs" role="tablist" aria-label={t.files}>
               {files.map((f) => (
                 <button key={f} type="button" role="tab" aria-selected={file === f} onClick={() => setFile(f)}>
                   {fileNames[f]}
@@ -330,11 +334,11 @@ function WorkspaceInner({ course, module, item, isChallenge, prev, next }: NonNu
           )}
           <span className="pane-actions">
             <button type="button" className="btn small ghost" onClick={reset}>
-              Reset
+              {t.reset}
             </button>
             {jsMode && (
-              <button type="button" className="btn small run" onClick={() => runCode()} title="Run (Ctrl+Enter)">
-                ▶ Run
+              <button type="button" className="btn small run" onClick={() => runCode()} title={t.runTitle}>
+                ▶ {t.run}
               </button>
             )}
           </span>
@@ -342,12 +346,12 @@ function WorkspaceInner({ course, module, item, isChallenge, prev, next }: NonNu
         <CodeEditor key={file} language={file} value={values[file]} onChange={setters[file]} onRun={jsMode ? runCode : undefined} />
       </section>
 
-      <section className="pane preview-pane" aria-label={jsMode && !jsPage ? 'Output' : 'Preview'}>
+      <section className="pane preview-pane" aria-label={jsMode && !jsPage ? t.output : t.preview}>
         {jsMode ? (
           <>
             {jsPage && (
               <div className="pane-bar">
-                <span>Preview</span>
+                <span>{t.preview}</span>
               </div>
             )}
             <JsPreview
@@ -364,20 +368,20 @@ function WorkspaceInner({ course, module, item, isChallenge, prev, next }: NonNu
           <>
             <div className="pane-bar">
               {showTarget ? (
-                <div className="file-tabs" role="tablist" aria-label="Preview">
+                <div className="file-tabs" role="tablist" aria-label={t.preview}>
                   <button type="button" role="tab" aria-selected={view === 'result'} onClick={() => setView('result')}>
-                    Your result
+                    {t.yourResult}
                   </button>
                   <button type="button" role="tab" aria-selected={view === 'target'} onClick={() => setView('target')}>
-                    Target
+                    {t.target}
                   </button>
                 </div>
               ) : (
-                <span>Preview</span>
+                <span>{t.preview}</span>
               )}
             </div>
             {view === 'target' && showTarget ? (
-              <Preview code={item.solution} css={item.solutionCss} title="Target design" />
+              <Preview code={item.solution} css={item.solutionCss} title={t.targetDesign} />
             ) : (
               <Preview code={code} css={cssMode ? css : undefined} />
             )}
