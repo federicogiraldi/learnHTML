@@ -346,6 +346,90 @@ pre {
   color: var(--muted);
 }
 
+.storage-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.75rem;
+}
+
+.settings .storage-status p,
+.settings p.storage-status {
+  margin: 0.5rem 0;
+}
+
+.settings .storage-status.ok {
+  color: var(--pass);
+}
+
+.install {
+  margin-top: 1.5rem;
+}
+
+.install h3 {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+}
+
+.backup-reminder {
+  margin: 1.5rem 0 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.backup-reminder p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.backup-reminder .row {
+  margin: 0.6rem 0 0;
+}
+
+/* ---------- banners: fixed at the bottom so they never shift the layout ---------- */
+.banners {
+  position: fixed;
+  inset: auto 16px 16px;
+  z-index: 20;
+  display: grid;
+  gap: 0.5rem;
+  justify-items: center;
+  pointer-events: none;
+}
+
+.banner {
+  pointer-events: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  width: min(100%, 640px);
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.35);
+  font-size: 0.9rem;
+}
+
+.banner p {
+  flex: 1 1 260px;
+  margin: 0;
+}
+
+.banner.warn {
+  border-color: var(--fail);
+  background: var(--fail-soft);
+}
+
+.banner.info {
+  border-left: 3px solid var(--accent);
+}
+
 /* ---------- workspace ---------- */
 .workspace,
 .playground {

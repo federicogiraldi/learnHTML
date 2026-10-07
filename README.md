@@ -41,6 +41,23 @@ CSS lessons have two files, `style.css` and `index.html`. The **Playground** has
 Progress and code are saved in your browser's localStorage; use *Export / Import progress* on the home page to
 move them to another device.
 
+### Keeping progress safe
+
+- On start the app asks the browser for **persistent storage** (`navigator.storage.persist()`), so progress is not
+  evicted when the disk is low. *Your progress* on the home page shows whether it was granted.
+- If localStorage can't be written (some private windows, blocked site data, full quota) a banner says progress
+  isn't being saved and offers an export.
+- After 14 days without an export (and with some progress), the home page suggests exporting a backup.
+
+### Install and offline
+
+LearnWeb is a PWA (`vite-plugin-pwa`): it can be installed (*Install the app* under *Your progress*, or
+Share → *Add to Home Screen* on iPhone and iPad) and works offline after the first visit. Only the app itself is
+precached; images from picsum.photos and Google Fonts used in lessons always come from the network. A new version
+waits for a click on *Update* and saves the code you're editing before reloading.
+
+Icons in `public/icons` are generated from the `</>` logo with `npm run icons`.
+
 ## Development
 
 ```sh
@@ -49,6 +66,7 @@ npm run dev      # http://localhost:5173
 npm test         # unit tests (jsdom) + CSS tests in headless Chromium
 npm run lint
 npm run build
+npm run test:e2e # build, then Playwright on `vite preview` under /learnHTML/ (offline, updates, storage)
 ```
 
 The CSS tests run in a real browser through Vitest browser mode. If Playwright's Chromium is missing locally,

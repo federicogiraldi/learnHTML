@@ -64,13 +64,34 @@ function WorkspaceInner({ course, module, item, isChallenge, prev, next }: NonNu
   const startedAt = useRef(Date.now());
   const [finishedMs, setFinishedMs] = useState<number | null>(null);
 
+  // Saves are debounced; pending edits are flushed when the page is hidden or about to reload (e.g. app update).
+  const latest = useRef({ code, css });
+  const dirty = useRef(false);
   useEffect(() => {
-    const t = setTimeout(() => {
-      progress.saveCode(item.id, code);
-      if (cssMode) progress.saveCode(cssKey, css);
-    }, 400);
+    const save = () => {
+      if (!dirty.current) return;
+      dirty.current = false;
+      progress.saveCode(item.id, latest.current.code);
+      if (cssMode) progress.saveCode(cssKey, latest.current.css);
+    };
+    const onHide = () => document.visibilityState === 'hidden' && save();
+    const off = progress.onFlush(save);
+    window.addEventListener('pagehide', save);
+    document.addEventListener('visibilitychange', onHide);
+    return () => {
+      save();
+      off();
+      window.removeEventListener('pagehide', save);
+      document.removeEventListener('visibilitychange', onHide);
+    };
+  }, [item.id, cssKey, cssMode]);
+
+  useEffect(() => {
+    latest.current = { code, css };
+    dirty.current = true;
+    const t = setTimeout(() => progress.flush(), 400);
     return () => clearTimeout(t);
-  }, [item.id, cssKey, cssMode, code, css]);
+  }, [code, css]);
 
   useEffect(() => {
     if (!isChallenge || finishedMs !== null) return;

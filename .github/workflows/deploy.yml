@@ -30,6 +30,19 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run build
+      # The service worker and manifest must ship next to index.html so they are served under /learnHTML/.
+      - name: Check PWA files
+        run: |
+          for f in index.html sw.js manifest.webmanifest icons/icon-192.png icons/icon-512.png icons/maskable-512.png; do
+            test -s "dist/$f" || { echo "::error::dist/$f is missing"; exit 1; }
+          done
+          ls dist/workbox-*.js
+          grep -q 'rel="manifest" href="./manifest.webmanifest"' dist/index.html
+          if grep -Eq 'picsum\.photos|fonts\.(googleapis|gstatic)\.com' dist/sw.js; then
+            echo "::error::external lesson assets must not be precached"; exit 1
+          fi
+      # Offline support, updates and storage warnings, tested on the build served under /learnHTML/.
+      - run: npx tsc -p e2e && npx playwright test
       - uses: actions/upload-pages-artifact@v3
         if: github.ref == 'refs/heads/main'
         with:
