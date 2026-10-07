@@ -4,7 +4,13 @@ import remarkGfm from 'remark-gfm';
 
 const plugins = [remarkGfm];
 
-/** Lesson prose. Fenced ```html and ```css blocks get a "Try it" button that loads them into the editor. */
+const tryItLanguage = (className: string): EditorLanguage | null => {
+  const m = /language-(html|css|js|javascript)\b/.exec(className);
+  if (!m) return null;
+  return m[1] === 'javascript' ? 'js' : (m[1] as EditorLanguage);
+};
+
+/** Lesson prose. Fenced ```html, ```css and ```js blocks get a "Try it" button that loads them into the editor. */
 export function Markdown({ source, onTryIt }: { source: string; onTryIt?: (code: string, lang: EditorLanguage) => void }) {
   return (
     <div className="prose">
@@ -17,17 +23,14 @@ export function Markdown({ source, onTryIt }: { source: string; onTryIt?: (code:
           code({ className, children }) {
             const code = String(children).replace(/\n$/, '');
             if (!className) return <code>{children}</code>;
+            const lang = tryItLanguage(className);
             return (
               <div className="code-block">
                 <pre>
                   <code>{code}</code>
                 </pre>
-                {onTryIt && /language-(html|css)/.test(className) && (
-                  <button
-                    type="button"
-                    className="btn small ghost try-it"
-                    onClick={() => onTryIt(code, className.includes('language-css') ? 'css' : 'html')}
-                  >
+                {onTryIt && lang && (
+                  <button type="button" className="btn small ghost try-it" onClick={() => onTryIt(code, lang)}>
                     Try it ↗
                   </button>
                 )}

@@ -6,10 +6,21 @@ export type CheckResult = true | string;
  */
 export type Check = (doc: Document, raw: string, css?: string) => CheckResult;
 
+/**
+ * A check for JavaScript lessons: an expression evaluated inside the sandbox after the learner's script runs,
+ * with the helpers as `h`. Build them with `src/engine/jsChecks.ts`.
+ */
+export interface JsCheck {
+  js: string;
+}
+
 export interface Task {
   text: string;
-  check: Check;
+  check: Check | JsCheck;
 }
+
+export type { FetchMock } from '../engine/js/runtime';
+import type { FetchMock } from '../engine/js/runtime';
 
 export interface Lesson {
   id: string;
@@ -23,6 +34,16 @@ export interface Lesson {
   /** Present on CSS lessons: the starting stylesheet (the HTML then lives in `starterCode`). */
   starterCss?: string;
   solutionCss?: string;
+  /**
+   * Present on JavaScript lessons: the starting script.js. With an empty `starterCode` the lesson is console-only;
+   * otherwise `starterCode` is index.html (and `starterCss`, if present, style.css).
+   */
+  starterJs?: string;
+  solutionJs?: string;
+  /** JavaScript lessons: fake responses for fetch(), keyed by URL (optionally "POST <url>"). */
+  fetchMocks?: Record<string, FetchMock>;
+  /** JavaScript lessons: what localStorage holds when the checks run. */
+  storage?: Record<string, string>;
 }
 
 export interface Challenge extends Lesson {
@@ -43,7 +64,7 @@ export interface Module {
   challenge: Challenge;
 }
 
-export type CourseId = 'html' | 'css';
+export type CourseId = 'html' | 'css' | 'js';
 
 export interface Course {
   id: CourseId;
@@ -52,4 +73,8 @@ export interface Course {
   modules: Module[];
 }
 
-export const isCssLesson = (l: Lesson) => l.starterCss !== undefined;
+export const isJsLesson = (l: Lesson) => l.starterJs !== undefined;
+/** A CSS-course lesson (JavaScript lessons can have a style.css too, but run differently). */
+export const isCssLesson = (l: Lesson) => l.starterCss !== undefined && !isJsLesson(l);
+/** A JavaScript lesson with a page (index.html), not just the console. */
+export const isJsPageLesson = (l: Lesson) => isJsLesson(l) && l.starterCode.trim() !== '';

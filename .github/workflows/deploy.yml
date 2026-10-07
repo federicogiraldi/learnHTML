@@ -25,7 +25,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      # CSS lessons are tested in a real browser (Vitest browser mode).
+      # CSS and JavaScript lessons are tested in a real browser (Vitest browser mode).
       - run: npx playwright install --with-deps chromium
       - run: npm run lint
       - run: npm test

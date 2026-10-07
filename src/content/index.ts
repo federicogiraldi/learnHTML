@@ -2,8 +2,9 @@ import type { Challenge, Course, CourseId, Lesson, Module } from './types';
 import type { ProgressState } from '../store/progress';
 import { htmlCourse } from './html';
 import { cssCourse } from './css';
+import { jsCourse } from './js';
 
-export const courses: Course[] = [htmlCourse, cssCourse];
+export const courses: Course[] = [htmlCourse, cssCourse, jsCourse];
 
 export const getCourse = (id: string | undefined) => courses.find((c) => c.id === id);
 

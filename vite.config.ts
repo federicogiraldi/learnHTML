@@ -20,7 +20,7 @@ export default defineConfig({
         id: './',
         name: 'LearnWeb',
         short_name: 'LearnWeb',
-        description: 'Learn HTML and CSS by writing it: lessons, a live preview and challenges.',
+        description: 'Learn HTML, CSS and JavaScript by writing it: lessons, a live preview and challenges.',
         lang: 'en',
         start_url: './',
         scope: './',
@@ -44,6 +44,8 @@ export default defineConfig({
     }),
   ],
   build: { chunkSizeWarningLimit: 1000 },
+  // Pre-bundled up front so the first test run doesn't reload when it discovers the dependency.
+  optimizeDeps: { include: ['@codemirror/lang-javascript'] },
   test: {
     projects: [
       {
