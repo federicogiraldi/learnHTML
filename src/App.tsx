@@ -43,6 +43,7 @@ export function App() {
             HTML
           </NavLink>
           <NavLink to="/course/css">CSS</NavLink>
+          <NavLink to="/course/js">JS</NavLink>
           <NavLink to="/playground">Playground</NavLink>
         </nav>
         <ThemeToggle />

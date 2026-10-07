@@ -5,8 +5,8 @@ export function TestPanel({ results, hidden, blind }: { results: TaskResult[]; h
     <ol className="tasks" aria-live="polite">
       {results.map((r, k) => {
         const state = hidden ? 'pending' : r.passed ? 'pass' : 'fail';
-        // The last result is always the well-formedness check, which stays visible.
-        const masked = blind && !r.passed && k < results.length - 1;
+        // The runner's own checks (valid code) stay visible.
+        const masked = blind && !r.passed && !r.implicit;
         return (
           <li key={k} className={`task ${state}`}>
             <span className="task-icon" aria-hidden="true">
