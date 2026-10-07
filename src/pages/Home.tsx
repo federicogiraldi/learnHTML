@@ -2,7 +2,10 @@ import { useRef, useState } from 'react';
 import { Link, Navigate, NavLink, useParams } from 'react-router-dom';
 import { courseItems, courses, getCourse, isModuleComplete, isModuleUnlocked } from '../content';
 import { ProgressBar } from '../components/ProgressBar';
-import { progress, useProgress } from '../store/progress';
+import { downloadProgress } from '../store/backup';
+import { needsBackup, progress, useProgress } from '../store/progress';
+import { requestPersistentStorage, usePersistStatus } from '../store/persistence';
+import { isIos, promptInstall, useCanInstall, useInstalled } from '../pwa/install';
 
 const stars = (n = 0) => '★'.repeat(n) + '☆'.repeat(3 - n);
 
@@ -58,6 +61,8 @@ export function Home() {
         )}
       </section>
 
+      {needsBackup(state) && <BackupReminder lastExportAt={state.lastExportAt} />}
+
       <ol className="modules">
         {modules.map((m, idx) => {
           const unlocked = isModuleUnlocked(course, m, state);
@@ -111,18 +116,84 @@ export function Home() {
   );
 }
 
+function BackupReminder({ lastExportAt }: { lastExportAt?: number }) {
+  return (
+    <aside className="backup-reminder" aria-label="Backup reminder">
+      <p>
+        {lastExportAt
+          ? `Your last backup is from ${new Date(lastExportAt).toLocaleDateString()}.`
+          : 'You haven’t backed up your progress yet.'}{' '}
+        Progress lives only in this browser: export it now and then, so clearing site data can’t erase it.
+      </p>
+      <div className="row">
+        <button type="button" className="btn small primary" onClick={downloadProgress}>
+          Export progress
+        </button>
+        <button type="button" className="btn small ghost" onClick={() => progress.snoozeBackupReminder()}>
+          Not now
+        </button>
+      </div>
+    </aside>
+  );
+}
+
+function StorageStatus() {
+  const status = usePersistStatus();
+  if (status === 'checking') return null;
+  if (status === 'persisted') {
+    return (
+      <p className="storage-status ok">
+        <span aria-hidden="true">🛡️</span> Your progress is protected: the browser won’t delete it to free up space.
+      </p>
+    );
+  }
+  return (
+    <div className="storage-status">
+      <p>
+        <span aria-hidden="true">⚠️</span> The browser might delete your progress if it runs low on space.
+        Installing the app or exporting a backup keeps it safe.
+      </p>
+      {status === 'best-effort' && (
+        <button type="button" className="btn small ghost" onClick={() => requestPersistentStorage()}>
+          Ask again to protect it
+        </button>
+      )}
+    </div>
+  );
+}
+
+function InstallApp() {
+  const canInstall = useCanInstall();
+  const installed = useInstalled();
+  if (installed) return null;
+  if (canInstall) {
+    return (
+      <div className="install">
+        <h3>Install the app</h3>
+        <p>Open LearnWeb from your home screen or dock, and keep learning offline.</p>
+        <button type="button" className="btn primary" onClick={() => promptInstall()}>
+          Install the app
+        </button>
+      </div>
+    );
+  }
+  if (isIos()) {
+    return (
+      <div className="install">
+        <h3>Install the app</h3>
+        <p>
+          In Safari, tap <strong>Share</strong>, then{' '}
+          <strong>Add to Home Screen</strong>. The installed app works offline and keeps your progress safer.
+        </p>
+      </div>
+    );
+  }
+  return null;
+}
+
 function Settings() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [msg, setMsg] = useState('');
-
-  const download = () => {
-    const url = URL.createObjectURL(new Blob([progress.export()], { type: 'application/json' }));
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'learnhtml-progress.json';
-    a.click();
-    URL.revokeObjectURL(url);
-  };
 
   const upload = async (file: File) => {
     try {
@@ -134,11 +205,12 @@ function Settings() {
   };
 
   return (
-    <section className="settings">
+    <section className="settings" id="settings">
       <h2>Your progress</h2>
-      <p>Progress is saved in this browser. Export it to move it to another device.</p>
+      <p>Progress is saved in this browser. Export it to back it up or move it to another device.</p>
+      <StorageStatus />
       <div className="row">
-        <button type="button" className="btn ghost" onClick={download}>
+        <button type="button" className="btn ghost" onClick={downloadProgress}>
           Export progress
         </button>
         <button type="button" className="btn ghost" onClick={() => fileRef.current?.click()}>
@@ -160,6 +232,7 @@ function Settings() {
         </button>
       </div>
       {msg && <p role="status">{msg}</p>}
+      <InstallApp />
     </section>
   );
 }

@@ -3,6 +3,7 @@ import { HashRouter, Link, NavLink, Route, Routes, useParams } from 'react-route
 import { Home } from './pages/Home';
 import { Workspace } from './pages/Workspace';
 import { Playground } from './pages/Playground';
+import { StorageBanner, UpdateBanner } from './components/Banners';
 import { progress, useProgress } from './store/progress';
 
 function ThemeToggle() {
@@ -61,6 +62,10 @@ export function App() {
           }
         />
       </Routes>
+      <div className="banners">
+        <StorageBanner />
+        <UpdateBanner />
+      </div>
     </HashRouter>
   );
 }
