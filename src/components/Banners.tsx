@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { downloadProgress } from '../store/backup';
 import { progress, useStorageWritable } from '../store/progress';
+import { useStrings } from '../i18n';
 
 /** Look for a new version this often while the app stays open. */
 const UPDATE_CHECK_MS = 60 * 60 * 1000;
@@ -10,17 +11,17 @@ const UPDATE_CHECK_MS = 60 * 60 * 1000;
 export function StorageBanner() {
   const writable = useStorageWritable();
   const [dismissed, setDismissed] = useState(false);
+  const t = useStrings();
   if (writable || dismissed) return null;
   return (
     <div className="banner warn" role="alert">
       <p>
-        <strong>Your progress isn’t being saved.</strong> This browser is blocking storage (private window, blocked
-        site data or full disk), so everything is lost when you close the tab. Export it to keep a copy.
+        <strong>{t.notSavedTitle}</strong> {t.notSavedText}
       </p>
       <button type="button" className="btn small ghost" onClick={downloadProgress}>
-        Export progress
+        {t.exportProgress}
       </button>
-      <button type="button" className="btn small ghost" onClick={() => setDismissed(true)} aria-label="Dismiss">
+      <button type="button" className="btn small ghost" onClick={() => setDismissed(true)} aria-label={t.dismiss}>
         ✕
       </button>
     </div>
@@ -34,6 +35,7 @@ export function StorageBanner() {
 export function UpdateBanner() {
   const registration = useRef<ServiceWorkerRegistration | undefined>(undefined);
   const requested = useRef(false);
+  const t = useStrings();
   const {
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
@@ -61,12 +63,12 @@ export function UpdateBanner() {
 
   return (
     <div className="banner info" role="status">
-      <p>New version available.</p>
+      <p>{t.newVersion}</p>
       <button type="button" className="btn small primary" onClick={update}>
-        Update
+        {t.update}
       </button>
       <button type="button" className="btn small ghost" onClick={() => setNeedRefresh(false)}>
-        Later
+        {t.later}
       </button>
     </div>
   );

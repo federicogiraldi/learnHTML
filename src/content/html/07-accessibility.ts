@@ -245,7 +245,7 @@ Where ARIA *is* useful:
   challenge: {
     id: 'a11y-challenge',
     title: 'Challenge: Accessibility audit',
-    summary: 'A newsletter page fails an audit on 8 points. Fix them all.',
+    summary: 'A newsletter page fails an audit on 9 points. Fix them all.',
     difficulty: 3,
     blind: true,
     explanation: `An accessibility audit flagged this newsletter sign-up page. Fix **every** issue so it passes

@@ -1,16 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { findItem } from '../content';
-import { isCssLesson, isJsLesson, isJsPageLesson, type Challenge } from '../content/types';
+import { isCssLesson, isJsLesson, isJsPageLesson, isSqlLesson, type Challenge } from '../content/types';
 import { CodeEditor, fileNames, type EditorLanguage } from '../components/CodeEditor';
 import { HintBox } from '../components/HintBox';
 import { JsPreview } from '../components/JsPreview';
 import { Markdown } from '../components/Markdown';
 import { Preview } from '../components/Preview';
+import { SqlPreview } from '../components/SqlPreview';
 import { TestPanel } from '../components/TestPanel';
 import { hasSyntaxError } from '../engine/js/instrument';
-import { runJsTests, runTests, type TestRun } from '../engine/runTests';
+import { runJsTests, runSqlTests, runTests, type SqlTestRun, type TestRun } from '../engine/runTests';
 import { progress, useProgress } from '../store/progress';
+import { useLang, useStrings } from '../i18n';
 
 /** Failed submissions before a challenge offers its solution. */
 const ATTEMPTS_FOR_SOLUTION = 3;
@@ -18,14 +20,17 @@ const ATTEMPTS_FOR_SOLUTION = 3;
 const CHECK_DELAY_MS = 250;
 /** JavaScript runs on Run / Ctrl+Enter, or after this long a pause, and only if it parses: never half-typed code. */
 const AUTO_RUN_MS = 1500;
+/** SQL is quick and harmless to run (every run starts from a fresh database), so it runs after a shorter pause. */
+const SQL_AUTO_RUN_MS = 1000;
 
 interface Files {
   code: string;
   css: string;
   js: string;
+  sql: string;
 }
 
-const sameFiles = (a: Files, b: Files) => a.code === b.code && a.css === b.css && a.js === b.js;
+const sameFiles = (a: Files, b: Files) => a.code === b.code && a.css === b.css && a.js === b.js && a.sql === b.sql;
 
 type Tab = 'learn' | 'code' | 'preview';
 
@@ -35,12 +40,14 @@ const formatTime = (ms: number) => {
 };
 
 export function Workspace({ id }: { id: string }) {
-  const found = findItem(id);
+  const lang = useLang();
+  const t = useStrings();
+  const found = findItem(id, lang);
   if (!found) {
     return (
       <main className="page">
-        <h1>Lesson not found</h1>
-        <Link to="/">Back to the courses</Link>
+        <h1>{t.lessonNotFound}</h1>
+        <Link to="/">{t.backToCourses}</Link>
       </main>
     );
   }
@@ -49,24 +56,32 @@ export function Workspace({ id }: { id: string }) {
 
 function WorkspaceInner({ course, module, item, isChallenge, prev, next }: NonNullable<ReturnType<typeof findItem>>) {
   const state = useProgress();
+  const t = useStrings();
   const completion = state.completed[item.id];
   const jsMode = isJsLesson(item);
+  const sqlMode = isSqlLesson(item);
+  /** JavaScript and SQL run as a whole, on Run or after a pause; HTML and CSS are checked as you type. */
+  const runMode = jsMode || sqlMode;
   const jsPage = isJsPageLesson(item);
   const cssMode = isCssLesson(item);
   const hasCss = cssMode || (jsPage && item.starterCss !== undefined);
-  const hasHtml = !jsMode || jsPage;
+  const hasHtml = (!jsMode && !sqlMode) || jsPage;
   const cssKey = `${item.id}:css`;
   const jsKey = `${item.id}:js`;
-  // script.js comes first in JavaScript lessons, style.css first in CSS lessons.
-  const files: EditorLanguage[] = jsMode
-    ? (['js', 'html', 'css'] as const).filter((f) => f === 'js' || (f === 'html' ? jsPage : hasCss))
-    : cssMode
-      ? ['css', 'html']
-      : ['html'];
+  const sqlKey = `${item.id}:sql`;
+  // script.js comes first in JavaScript lessons, style.css first in CSS lessons; SQL lessons have only query.sql.
+  const files: EditorLanguage[] = sqlMode
+    ? ['sql']
+    : jsMode
+      ? (['js', 'html', 'css'] as const).filter((f) => f === 'js' || (f === 'html' ? jsPage : hasCss))
+      : cssMode
+        ? ['css', 'html']
+        : ['html'];
 
   const [code, setCode] = useState(() => progress.get().code[item.id] ?? item.starterCode);
   const [css, setCss] = useState(() => progress.get().code[cssKey] ?? item.starterCss ?? '');
   const [js, setJs] = useState(() => progress.get().code[jsKey] ?? item.starterJs ?? '');
+  const [sql, setSql] = useState(() => progress.get().code[sqlKey] ?? item.starterSql ?? '');
   const [file, setFile] = useState<EditorLanguage>(files[0]);
   const [hintsShown, setHintsShown] = useState(0);
   const [solutionShown, setSolutionShown] = useState(false);
@@ -76,15 +91,16 @@ function WorkspaceInner({ course, module, item, isChallenge, prev, next }: NonNu
   // Debounced snapshot of the code that the live checks run against (HTML and CSS lessons).
   const [checked, setChecked] = useState({ code, css });
   useEffect(() => {
-    if (jsMode) return;
+    if (runMode) return;
     const t = setTimeout(() => setChecked({ code, css }), CHECK_DELAY_MS);
     return () => clearTimeout(t);
-  }, [code, css, jsMode]);
+  }, [code, css, runMode]);
 
-  // JavaScript runs as a whole, on demand: `ran` is the snapshot of the last run (preview and checks).
-  const latestFiles = useRef<Files>({ code, css, js });
-  const [ran, setRan] = useState(() => ({ n: 0, files: { code, css, js } }));
-  const [jsLive, setJsLive] = useState<TestRun | null>(null);
+  // JavaScript and SQL run as a whole, on demand: `ran` is the snapshot of the last run (output and checks).
+  const latestFiles = useRef<Files>({ code, css, js, sql });
+  const [ran, setRan] = useState(() => ({ n: 0, files: { code, css, js, sql } }));
+  const [asyncLive, setAsyncLive] = useState<TestRun | null>(null);
+  const [sqlRun, setSqlRun] = useState<SqlTestRun | null>(null);
   const runCode = useCallback((force = true) => {
     setRan((r) => (!force && sameFiles(r.files, latestFiles.current) ? r : { n: r.n + 1, files: latestFiles.current }));
   }, []);
@@ -94,17 +110,33 @@ function WorkspaceInner({ course, module, item, isChallenge, prev, next }: NonNu
     return () => clearTimeout(t);
   }, [js, code, css, jsMode, runCode]);
   useEffect(() => {
+    if (!sqlMode) return;
+    const t = setTimeout(() => runCode(false), SQL_AUTO_RUN_MS);
+    return () => clearTimeout(t);
+  }, [sql, sqlMode, runCode]);
+  useEffect(() => {
     if (!jsMode || isChallenge) return;
     const run = new AbortController();
     runJsTests(item, { js: ran.files.js, html: ran.files.code, css: ran.files.css }, run.signal).then(
-      (r) => !run.signal.aborted && setJsLive(r),
+      (r) => !run.signal.aborted && setAsyncLive(r),
     );
     return () => run.abort();
   }, [jsMode, isChallenge, item, ran]);
+  // SQL runs show their results in challenges too; only the checks wait for a submit.
+  useEffect(() => {
+    if (!sqlMode) return;
+    const run = new AbortController();
+    runSqlTests(item, ran.files.sql, run.signal).then((r) => {
+      if (run.signal.aborted) return;
+      setSqlRun(r);
+      if (!isChallenge) setAsyncLive(r);
+    });
+    return () => run.abort();
+  }, [sqlMode, isChallenge, item, ran]);
 
   // Lessons check live; challenges only on submit.
-  const syncLive = useMemo(() => (jsMode ? null : runTests(item, checked.code, checked.css)), [jsMode, item, checked]);
-  const live = syncLive ?? jsLive;
+  const syncLive = useMemo(() => (runMode ? null : runTests(item, checked.code, checked.css)), [runMode, item, checked]);
+  const live = syncLive ?? asyncLive;
   const [submitted, setSubmitted] = useState<{ run: TestRun; files: Files } | null>(null);
   const [checking, setChecking] = useState(false);
   const [attempts, setAttempts] = useState(0);
@@ -122,6 +154,7 @@ function WorkspaceInner({ course, module, item, isChallenge, prev, next }: NonNu
       if (hasHtml) progress.saveCode(item.id, f.code);
       if (hasCss) progress.saveCode(cssKey, f.css);
       if (jsMode) progress.saveCode(jsKey, f.js);
+      if (sqlMode) progress.saveCode(sqlKey, f.sql);
     };
     const onHide = () => document.visibilityState === 'hidden' && save();
     const off = progress.onFlush(save);
@@ -133,14 +166,14 @@ function WorkspaceInner({ course, module, item, isChallenge, prev, next }: NonNu
       window.removeEventListener('pagehide', save);
       document.removeEventListener('visibilitychange', onHide);
     };
-  }, [item.id, cssKey, jsKey, hasHtml, hasCss, jsMode]);
+  }, [item.id, cssKey, jsKey, sqlKey, hasHtml, hasCss, jsMode, sqlMode]);
 
   useEffect(() => {
-    latestFiles.current = { code, css, js };
+    latestFiles.current = { code, css, js, sql };
     dirty.current = true;
     const t = setTimeout(() => progress.flush(), 400);
     return () => clearTimeout(t);
-  }, [code, css, js]);
+  }, [code, css, js, sql]);
 
   useEffect(() => {
     if (!isChallenge || finishedMs !== null) return;
@@ -167,20 +200,25 @@ function WorkspaceInner({ course, module, item, isChallenge, prev, next }: NonNu
   };
 
   const submit = async () => {
-    const f = { code, css, js };
-    if (!jsMode) return record(runTests(item, code, css), f);
+    const f = { code, css, js, sql };
+    if (!runMode) return record(runTests(item, code, css), f);
     setChecking(true);
     runCode();
     try {
-      record(await runJsTests(item, { js, html: code, css }), f);
+      record(sqlMode ? await runSqlTests(item, sql) : await runJsTests(item, { js, html: code, css }), f);
     } finally {
       setChecking(false);
     }
   };
 
-  const setters: Record<EditorLanguage, (v: string) => void> = { html: setCode, css: setCss, js: setJs };
-  const values: Record<EditorLanguage, string> = { html: code, css, js };
-  const starters: Record<EditorLanguage, string> = { html: item.starterCode, css: item.starterCss ?? '', js: item.starterJs ?? '' };
+  const setters: Record<EditorLanguage, (v: string) => void> = { html: setCode, css: setCss, js: setJs, sql: setSql };
+  const values: Record<EditorLanguage, string> = { html: code, css, js, sql };
+  const starters: Record<EditorLanguage, string> = {
+    html: item.starterCode,
+    css: item.starterCss ?? '',
+    js: item.starterJs ?? '',
+    sql: item.starterSql ?? '',
+  };
 
   const tryIt = (snippet: string, lang: EditorLanguage) => {
     const target = files.includes(lang) ? lang : files[0];
@@ -193,11 +231,12 @@ function WorkspaceInner({ course, module, item, isChallenge, prev, next }: NonNu
     if (hasHtml) setCode(item.solution);
     if (hasCss) setCss(item.solutionCss ?? '');
     if (jsMode) setJs(item.solutionJs ?? '');
+    if (sqlMode) setSql(item.solutionSql ?? '');
     setTab('code');
   };
 
   const reset = () => {
-    if (values[file] !== starters[file] && !confirm(`Replace ${fileNames[file]} with the starting code?`)) return;
+    if (values[file] !== starters[file] && !confirm(t.confirmReplace(fileNames[file]))) return;
     setters[file](starters[file]);
   };
 
@@ -205,53 +244,64 @@ function WorkspaceInner({ course, module, item, isChallenge, prev, next }: NonNu
   const pending = item.tasks.map(({ text }) => ({ text, passed: false }));
   const results = (isChallenge ? submitted?.run.results : live?.results) ?? pending;
   const passed = isChallenge ? submitted?.run.allPassed === true : !!live?.allPassed;
-  const stale = isChallenge && submitted && !sameFiles(submitted.files, { code, css, js });
+  const stale = isChallenge && submitted && !sameFiles(submitted.files, { code, css, js, sql });
   const showTarget = isChallenge && (item as Challenge).showTarget;
 
   return (
     <main className={`workspace tab-${tab}`}>
-      <div className="tabs" role="tablist" aria-label="Workspace panels">
-        {(['learn', 'code', 'preview'] as Tab[]).map((t) => (
-          <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => setTab(t)}>
-            {t === 'learn' ? (isChallenge ? 'Brief' : 'Lesson') : t === 'code' ? 'Code' : jsMode && !jsPage ? 'Console' : 'Preview'}
+      <div className="tabs" role="tablist" aria-label={t.workspacePanels}>
+        {(['learn', 'code', 'preview'] as Tab[]).map((p) => (
+          <button key={p} type="button" role="tab" aria-selected={tab === p} onClick={() => setTab(p)}>
+            {p === 'learn'
+              ? isChallenge
+                ? t.tabBrief
+                : t.tabLesson
+              : p === 'code'
+                ? t.tabCode
+                : sqlMode
+                  ? t.tabResults
+                  : jsMode && !jsPage
+                    ? t.tabConsole
+                    : t.tabPreview}
           </button>
         ))}
       </div>
 
-      <section className="pane learn-pane" aria-label="Instructions">
+      <section className="pane learn-pane" aria-label={t.instructions}>
         <div className="learn-scroll">
           <p className="crumbs">
-            <Link to={`/course/${course.id}`}>{course.title} course</Link> / {module.title}
+            <Link to={`/course/${course.id}`}>{t.courseCrumb(course.title)}</Link> / {module.title}
           </p>
           <h1>
             {isChallenge && <span aria-hidden="true">🏆 </span>}
             {item.title}
-            {completion && <span className="badge">Completed</span>}
+            {completion && <span className="badge">{t.completed}</span>}
           </h1>
           {isChallenge && (
             <p className="challenge-meta">
-              <span>Difficulty: {'🔥'.repeat((item as Challenge).difficulty)}</span>
+              <span>{t.difficulty}: {'🔥'.repeat((item as Challenge).difficulty)}</span>
               <span>⏱ {formatTime(finishedMs ?? now - startedAt.current)}</span>
-              {completion?.bestTimeMs !== undefined && <span>Best: {formatTime(completion.bestTimeMs)}</span>}
-              {completion?.stars && <span>Best stars: {'★'.repeat(completion.stars)}</span>}
+              {completion?.bestTimeMs !== undefined && <span>{t.best}: {formatTime(completion.bestTimeMs)}</span>}
+              {completion?.stars && <span>{t.bestStars}: {'★'.repeat(completion.stars)}</span>}
             </p>
           )}
           <Markdown source={item.explanation} onTryIt={tryIt} />
 
-          <h2>{isChallenge ? 'Requirements' : 'Your tasks'}</h2>
-          {stale && <p className="note">You edited the code since your last check.</p>}
-          {jsMode && !isChallenge && <p className="muted">Checks run when you press Run (or Ctrl+Enter).</p>}
+          <h2>{isChallenge ? t.requirements : t.yourTasks}</h2>
+          {stale && <p className="note">{t.staleNote}</p>}
+          {jsMode && !isChallenge && <p className="muted">{t.checksOnRun}</p>}
+          {sqlMode && !isChallenge && <p className="muted">{t.sqlChecksOnRun}</p>}
           <TestPanel results={results} hidden={isChallenge ? !submitted : !live} blind={isChallenge && (item as Challenge).blind} />
 
           {isChallenge && (
             <div className="row">
               <button type="button" className="btn primary" onClick={submit} disabled={checking}>
-                {checking ? 'Checking…' : 'Check my solution'}
+                {checking ? t.checking : t.checkSolution}
               </button>
               {!passed && (
                 <span className="muted">
-                  Worth {challengeStars} {challengeStars === 1 ? 'star' : 'stars'} now
-                  {attempts > 0 && ` · ${attempts} attempt${attempts === 1 ? '' : 's'}`}
+                  {t.worth(challengeStars)}
+                  {attempts > 0 && ` · ${t.attempts(attempts)}`}
                 </span>
               )}
             </div>
@@ -259,14 +309,14 @@ function WorkspaceInner({ course, module, item, isChallenge, prev, next }: NonNu
 
           {passed && (
             <div className="success" role="status">
-              <strong>{isChallenge ? `Challenge complete! ${'★'.repeat(challengeStars)}` : 'Nice work — all tasks done!'}</strong>
+              <strong>{isChallenge ? `${t.challengeComplete} ${'★'.repeat(challengeStars)}` : t.allDone}</strong>
               {next ? (
                 <Link className="btn primary" to={`/learn/${next.item.id}`}>
-                  Next: {next.item.title} →
+                  {t.next(next.item.title)} →
                 </Link>
               ) : (
                 <Link className="btn primary" to={`/course/${course.id}`}>
-                  You finished the {course.title} course 🎉
+                  {t.finishedCourse(course.title)}
                 </Link>
               )}
             </div>
@@ -277,17 +327,17 @@ function WorkspaceInner({ course, module, item, isChallenge, prev, next }: NonNu
           <div className="solution">
             {solutionShown ? (
               <>
-                <h2>Solution</h2>
+                <h2>{t.solution}</h2>
                 {files.map((f) => (
                   <div key={f}>
                     {files.length > 1 && <h3 className="file-label">{fileNames[f]}</h3>}
                     <pre>
-                      <code>{f === 'js' ? item.solutionJs : f === 'css' ? item.solutionCss : item.solution}</code>
+                      <code>{f === 'sql' ? item.solutionSql : f === 'js' ? item.solutionJs : f === 'css' ? item.solutionCss : item.solution}</code>
                     </pre>
                   </div>
                 ))}
                 <button type="button" className="btn small ghost" onClick={loadSolution}>
-                  Load into editor
+                  {t.loadIntoEditor}
                 </button>
               </>
             ) : canSeeSolution ? (
@@ -295,30 +345,30 @@ function WorkspaceInner({ course, module, item, isChallenge, prev, next }: NonNu
                 type="button"
                 className="btn small ghost"
                 onClick={() =>
-                  (!isChallenge || completion || confirm('Seeing the solution limits this run to 1 star. Continue?')) &&
+                  (!isChallenge || completion || confirm(t.confirmSolution)) &&
                   setSolutionShown(true)
                 }
               >
-                Show solution
+                {t.showSolution}
               </button>
             ) : (
               <p className="muted">
-                The solution unlocks after {ATTEMPTS_FOR_SOLUTION} checks ({attempts}/{ATTEMPTS_FOR_SOLUTION}).
+                {t.solutionUnlocks(ATTEMPTS_FOR_SOLUTION, attempts)}
               </p>
             )}
           </div>
 
-          <nav className="pager" aria-label="Lesson navigation">
+          <nav className="pager" aria-label={t.lessonNav}>
             {prev ? <Link to={`/learn/${prev.item.id}`}>← {prev.item.title}</Link> : <span />}
             {next && <Link to={`/learn/${next.item.id}`}>{next.item.title} →</Link>}
           </nav>
         </div>
       </section>
 
-      <section className="pane editor-pane" aria-label="Code editor">
+      <section className="pane editor-pane" aria-label={t.codeEditor}>
         <div className="pane-bar">
           {files.length > 1 ? (
-            <div className="file-tabs" role="tablist" aria-label="Files">
+            <div className="file-tabs" role="tablist" aria-label={t.files}>
               {files.map((f) => (
                 <button key={f} type="button" role="tab" aria-selected={file === f} onClick={() => setFile(f)}>
                   {fileNames[f]}
@@ -330,24 +380,26 @@ function WorkspaceInner({ course, module, item, isChallenge, prev, next }: NonNu
           )}
           <span className="pane-actions">
             <button type="button" className="btn small ghost" onClick={reset}>
-              Reset
+              {t.reset}
             </button>
-            {jsMode && (
-              <button type="button" className="btn small run" onClick={() => runCode()} title="Run (Ctrl+Enter)">
-                ▶ Run
+            {runMode && (
+              <button type="button" className="btn small run" onClick={() => runCode()} title={t.runTitle}>
+                ▶ {t.run}
               </button>
             )}
           </span>
         </div>
-        <CodeEditor key={file} language={file} value={values[file]} onChange={setters[file]} onRun={jsMode ? runCode : undefined} />
+        <CodeEditor key={file} language={file} value={values[file]} onChange={setters[file]} onRun={runMode ? runCode : undefined} />
       </section>
 
-      <section className="pane preview-pane" aria-label={jsMode && !jsPage ? 'Output' : 'Preview'}>
-        {jsMode ? (
+      <section className="pane preview-pane" aria-label={sqlMode ? t.sqlResults : jsMode && !jsPage ? t.output : t.preview}>
+        {sqlMode ? (
+          <SqlPreview run={sqlRun} onRun={runCode} />
+        ) : jsMode ? (
           <>
             {jsPage && (
               <div className="pane-bar">
-                <span>Preview</span>
+                <span>{t.preview}</span>
               </div>
             )}
             <JsPreview
@@ -364,20 +416,20 @@ function WorkspaceInner({ course, module, item, isChallenge, prev, next }: NonNu
           <>
             <div className="pane-bar">
               {showTarget ? (
-                <div className="file-tabs" role="tablist" aria-label="Preview">
+                <div className="file-tabs" role="tablist" aria-label={t.preview}>
                   <button type="button" role="tab" aria-selected={view === 'result'} onClick={() => setView('result')}>
-                    Your result
+                    {t.yourResult}
                   </button>
                   <button type="button" role="tab" aria-selected={view === 'target'} onClick={() => setView('target')}>
-                    Target
+                    {t.target}
                   </button>
                 </div>
               ) : (
-                <span>Preview</span>
+                <span>{t.preview}</span>
               )}
             </div>
             {view === 'target' && showTarget ? (
-              <Preview code={item.solution} css={item.solutionCss} title="Target design" />
+              <Preview code={item.solution} css={item.solutionCss} title={t.targetDesign} />
             ) : (
               <Preview code={code} css={cssMode ? css : undefined} />
             )}

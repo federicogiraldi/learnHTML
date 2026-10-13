@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { CodeEditor, fileNames, type EditorLanguage } from '../components/CodeEditor';
+import { CodeEditor, fileNames } from '../components/CodeEditor';
 import { JsPreview } from '../components/JsPreview';
 import { progress } from '../store/progress';
 import { validate } from '../engine/validator';
 import { validateCss } from '../engine/cssValidator';
 import { hasSyntaxError } from '../engine/js/instrument';
+import { useStrings, useTranslateMessage } from '../i18n';
 
 const ID = '__playground';
 const CSS_ID = '__playground:css';
@@ -39,20 +40,25 @@ button.addEventListener('click', () => {
   console.log('Hello from script.js!');
 });
 `;
-const STARTERS: Record<EditorLanguage, string> = { html: START, css: START_CSS, js: START_JS };
-const KEYS: Record<EditorLanguage, string> = { html: ID, css: CSS_ID, js: JS_ID };
+/** The playground's files: a web page (SQL lives in the SQL course). */
+type PlayFile = 'html' | 'css' | 'js';
+
+const STARTERS: Record<PlayFile, string> = { html: START, css: START_CSS, js: START_JS };
+const KEYS: Record<PlayFile, string> = { html: ID, css: CSS_ID, js: JS_ID };
 /** HTML and CSS edits show up quickly; JavaScript waits for a longer pause (or Run) and for code that parses. */
-const DELAY: Record<EditorLanguage, number> = { html: 300, css: 300, js: 1500 };
+const DELAY: Record<PlayFile, number> = { html: 300, css: 300, js: 1500 };
 
 export function Playground() {
+  const t = useStrings();
+  const tr = useTranslateMessage();
   const saved = progress.get().code;
-  const [files, setFiles] = useState<Record<EditorLanguage, string>>(() => ({
+  const [files, setFiles] = useState<Record<PlayFile, string>>(() => ({
     html: saved[ID] ?? START,
     css: saved[CSS_ID] ?? START_CSS,
     // Older playgrounds have no script.js yet: start them empty so nothing unexpected runs.
     js: saved[JS_ID] ?? (saved[ID] === undefined ? START_JS : ''),
   }));
-  const [file, setFile] = useState<EditorLanguage>('html');
+  const [file, setFile] = useState<PlayFile>('html');
   const [ran, setRan] = useState(() => ({ n: 0, files }));
   const latest = useRef(files);
   const run = useCallback(() => setRan((r) => ({ n: r.n + 1, files: latest.current })), []);
@@ -74,7 +80,7 @@ export function Playground() {
     progress.saveCode(KEYS[file], v);
   };
   const reset = () => {
-    if (!confirm(`Reset ${fileNames[file]}?`)) return;
+    if (!confirm(t.confirmResetFile(fileNames[file]))) return;
     change(STARTERS[file]);
   };
 
@@ -82,8 +88,8 @@ export function Playground() {
     <main className="playground">
       <div className="pane editor-pane">
         <div className="pane-bar">
-          <div className="file-tabs" role="tablist" aria-label="Files">
-            {(['html', 'css', 'js'] as EditorLanguage[]).map((f) => (
+          <div className="file-tabs" role="tablist" aria-label={t.files}>
+            {(['html', 'css', 'js'] as PlayFile[]).map((f) => (
               <button key={f} type="button" role="tab" aria-selected={file === f} onClick={() => setFile(f)}>
                 {fileNames[f]}
               </button>
@@ -91,10 +97,10 @@ export function Playground() {
           </div>
           <span className="pane-actions">
             <button type="button" className="btn small ghost" onClick={reset}>
-              Reset
+              {t.reset}
             </button>
-            <button type="button" className="btn small run" onClick={run} title="Run (Ctrl+Enter)">
-              ▶ Run
+            <button type="button" className="btn small run" onClick={run} title={t.runTitle}>
+              ▶ {t.run}
             </button>
           </span>
         </div>
@@ -102,10 +108,10 @@ export function Playground() {
         {file !== 'js' && (
           <div className={`issues ${issues.length ? 'has-issues' : ''}`} role="status">
             {issues.length === 0
-              ? `✓ No ${file === 'html' ? 'structural' : 'CSS'} errors`
+              ? t.noIssues(file === 'html')
               : issues.slice(0, 4).map((i, k) => (
                   <div key={k}>
-                    ⚠ Line {i.line}: {i.message}
+                    ⚠ {t.line(i.line)}: {tr(i.message)}
                   </div>
                 ))}
           </div>
@@ -113,7 +119,7 @@ export function Playground() {
       </div>
       <div className="pane preview-pane">
         <div className="pane-bar">
-          <span>Preview</span>
+          <span>{t.preview}</span>
         </div>
         <JsPreview files={{ html: ran.files.html, css: ran.files.css, js: ran.files.js }} runKey={ran.n} page storageId={ID} />
       </div>

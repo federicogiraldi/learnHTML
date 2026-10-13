@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Sandbox, missingScriptMessage, type ConsoleEntry, type SandboxFiles } from '../engine/js/sandbox';
 import type { FetchMock } from '../content/types';
+import { useStrings, useTranslateMessage } from '../i18n';
 
 /** localStorage of each lesson's preview, kept for the session so "reload" (Run) sees saved data. */
 const storages = new Map<string, Record<string, string>>();
@@ -40,6 +41,7 @@ export function JsPreview({
   const [entries, setEntries] = useState<Entry[]>([]);
   const [stopped, setStopped] = useState<string | null>(null);
   const [stored, setStored] = useState(() => storages.get(storageId) ?? storage ?? {});
+  const tr = useTranslateMessage();
   const filesRef = useRef(files);
   const optsRef = useRef({ mocks, storageId, storage });
   useEffect(() => {
@@ -92,7 +94,7 @@ export function JsPreview({
       <div ref={host} className="js-page" hidden={!page}>
         {stopped && page && (
           <p className="stopped" role="alert">
-            ⏹ {stopped}
+            ⏹ {tr(stopped)}
           </p>
         )}
       </div>
@@ -121,48 +123,50 @@ function Console({
   onRun?: () => void;
 }) {
   const list = useRef<HTMLOListElement>(null);
+  const t = useStrings();
+  const tr = useTranslateMessage();
   useEffect(() => {
     const el = list.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [entries]);
   const errors = entries.filter((e) => e.level === 'error').length;
   return (
-    <section className="console" aria-label="Console">
+    <section className="console" aria-label={t.console}>
       <div className="console-bar">
         <span>
-          Console
+          {t.console}
           {errors > 0 && (
             <span className="console-count">
-              {errors} error{errors === 1 ? '' : 's'}
+              {t.errors(errors)}
             </span>
           )}
         </span>
         <span className="console-actions">
           {storageKeys > 0 && (
-            <button type="button" className="btn small ghost" onClick={onClearStorage} title="Empty this lesson's localStorage">
-              Clear storage ({storageKeys})
+            <button type="button" className="btn small ghost" onClick={onClearStorage} title={t.clearStorageTitle}>
+              {t.clearStorage(storageKeys)}
             </button>
           )}
           <button type="button" className="btn small ghost" onClick={onClear}>
-            Clear
+            {t.clear}
           </button>
           {onRun && (
             <button type="button" className="btn small run narrow-only" onClick={onRun}>
-              ▶ Run
+              ▶ {t.run}
             </button>
           )}
         </span>
       </div>
       <ol ref={list} className="console-lines" role="log" aria-live="polite">
         {entries.length === 0 ? (
-          <li className="console-empty">Output from console.log() appears here.</li>
+          <li className="console-empty">{t.consoleEmpty}</li>
         ) : (
           entries.map((e) => (
             <li key={e.id} className={`console-line ${e.level}`}>
               <span className="console-icon" aria-hidden="true">
                 {e.level === 'error' ? '✖' : e.level === 'warn' ? '⚠' : '›'}
               </span>
-              <span className="console-text">{e.text}</span>
+              <span className="console-text">{e.level === 'log' ? e.text : tr(e.text)}</span>
               {e.line !== undefined && <span className="console-where">script.js:{e.line}</span>}
             </li>
           ))

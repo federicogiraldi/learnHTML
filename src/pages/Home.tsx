@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { Link, Navigate, NavLink, useParams } from 'react-router-dom';
-import { courseItems, courses, getCourse, isModuleComplete, isModuleUnlocked } from '../content';
+import { courseItems, coursesIn, getCourse, isModuleComplete, isModuleUnlocked } from '../content';
+import { useLang, useStrings, useTranslateMessage } from '../i18n';
 import { ProgressBar } from '../components/ProgressBar';
 import { downloadProgress } from '../store/backup';
 import { needsBackup, progress, useProgress } from '../store/progress';
@@ -11,7 +12,9 @@ const stars = (n = 0) => '★'.repeat(n) + '☆'.repeat(3 - n);
 
 export function Home() {
   const { courseId = 'html' } = useParams();
-  const course = getCourse(courseId);
+  const lang = useLang();
+  const t = useStrings();
+  const course = getCourse(courseId, lang);
   const state = useProgress();
   if (!course) return <Navigate to="/" replace />;
 
@@ -23,8 +26,8 @@ export function Home() {
   return (
     <main className="page">
       <section className="hero">
-        <div className="course-switch" role="tablist" aria-label="Courses">
-          {courses.map((c) => {
+        <div className="course-switch" role="tablist" aria-label={t.courses}>
+          {coursesIn(lang).map((c) => {
             const its = courseItems(c);
             const n = its.filter((i) => state.completed[i.item.id]).length;
             return (
@@ -43,20 +46,15 @@ export function Home() {
             );
           })}
         </div>
-        <h1>Learn {course.title} by writing it.</h1>
-        <p>
-          {modules.length} modules. {course.tagline} Every lesson explains one idea, then hands you an editor and a
-          checklist. Every module ends with a challenge.
-        </p>
+        <h1>{t.heroTitle(course.title)}</h1>
+        <p>{t.heroText(modules.length, course.tagline)}</p>
         <div className="hero-progress">
-          <ProgressBar value={done} max={items.length} label={`${course.title} course progress`} />
-          <span>
-            {done} / {items.length} completed
-          </span>
+          <ProgressBar value={done} max={items.length} label={t.courseProgress(course.title)} />
+          <span>{t.completedOf(done, items.length)}</span>
         </div>
         {resume && (
           <Link className="btn primary" to={`/learn/${resume.item.id}`}>
-            {done === 0 ? 'Start the first lesson' : `Continue: ${resume.item.title}`} →
+            {done === 0 ? t.startFirst : t.continueWith(resume.item.title)} →
           </Link>
         )}
       </section>
@@ -78,7 +76,7 @@ export function Home() {
                   <p>{m.description}</p>
                 </div>
               </div>
-              <ProgressBar value={n} max={mItems.length} label={`${m.title} progress`} />
+              <ProgressBar value={n} max={mItems.length} label={t.moduleProgress(m.title)} />
               {unlocked ? (
                 <ul className="lesson-list">
                   {m.lessons.map((l) => (
@@ -91,7 +89,7 @@ export function Home() {
                   <li>
                     <Link to={`/learn/${m.challenge.id}`} className={`challenge-link ${state.completed[m.challenge.id] ? 'done' : ''}`}>
                       <span aria-hidden="true">🏆</span> {m.challenge.title}
-                      <span className="stars" aria-label={`${state.completed[m.challenge.id]?.stars ?? 0} of 3 stars`}>
+                      <span className="stars" aria-label={t.starsOf(state.completed[m.challenge.id]?.stars ?? 0)}>
                         {stars(state.completed[m.challenge.id]?.stars)}
                       </span>
                     </Link>
@@ -100,9 +98,9 @@ export function Home() {
                 </ul>
               ) : (
                 <div className="locked-note">
-                  <p>🔒 Finish the lessons of “{modules[idx - 1].title}” to unlock.</p>
+                  <p>{t.unlockNote(modules[idx - 1].title)}</p>
                   <button type="button" className="btn small ghost" onClick={() => progress.unlock(m.id)}>
-                    I know this already — unlock
+                    {t.unlockButton}
                   </button>
                 </div>
               )}
@@ -115,22 +113,20 @@ export function Home() {
     </main>
   );
 }
-
 function BackupReminder({ lastExportAt }: { lastExportAt?: number }) {
+  const t = useStrings();
+  const lang = useLang();
   return (
-    <aside className="backup-reminder" aria-label="Backup reminder">
+    <aside className="backup-reminder" aria-label={t.backupReminder}>
       <p>
-        {lastExportAt
-          ? `Your last backup is from ${new Date(lastExportAt).toLocaleDateString()}.`
-          : 'You haven’t backed up your progress yet.'}{' '}
-        Progress lives only in this browser: export it now and then, so clearing site data can’t erase it.
+        {lastExportAt ? t.lastBackup(new Date(lastExportAt).toLocaleDateString(lang)) : t.noBackup} {t.backupWhy}
       </p>
       <div className="row">
         <button type="button" className="btn small primary" onClick={downloadProgress}>
-          Export progress
+          {t.exportProgress}
         </button>
         <button type="button" className="btn small ghost" onClick={() => progress.snoozeBackupReminder()}>
-          Not now
+          {t.notNow}
         </button>
       </div>
     </aside>
@@ -139,23 +135,23 @@ function BackupReminder({ lastExportAt }: { lastExportAt?: number }) {
 
 function StorageStatus() {
   const status = usePersistStatus();
+  const t = useStrings();
   if (status === 'checking') return null;
   if (status === 'persisted') {
     return (
       <p className="storage-status ok">
-        <span aria-hidden="true">🛡️</span> Your progress is protected: the browser won’t delete it to free up space.
+        <span aria-hidden="true">🛡️</span> {t.storageProtected}
       </p>
     );
   }
   return (
     <div className="storage-status">
       <p>
-        <span aria-hidden="true">⚠️</span> The browser might delete your progress if it runs low on space.
-        Installing the app or exporting a backup keeps it safe.
+        <span aria-hidden="true">⚠️</span> {t.storageAtRisk}
       </p>
       {status === 'best-effort' && (
         <button type="button" className="btn small ghost" onClick={() => requestPersistentStorage()}>
-          Ask again to protect it
+          {t.askAgain}
         </button>
       )}
     </div>
@@ -165,25 +161,30 @@ function StorageStatus() {
 function InstallApp() {
   const canInstall = useCanInstall();
   const installed = useInstalled();
+  const t = useStrings();
   if (installed) return null;
   if (canInstall) {
     return (
       <div className="install">
-        <h3>Install the app</h3>
-        <p>Open LearnWeb from your home screen or dock, and keep learning offline.</p>
+        <h3>{t.installTitle}</h3>
+        <p>{t.installText}</p>
         <button type="button" className="btn primary" onClick={() => promptInstall()}>
-          Install the app
+          {t.installTitle}
         </button>
       </div>
     );
   }
   if (isIos()) {
+    const [tap, share, then, add, rest] = t.installIos;
     return (
       <div className="install">
-        <h3>Install the app</h3>
+        <h3>{t.installTitle}</h3>
         <p>
-          In Safari, tap <strong>Share</strong>, then{' '}
-          <strong>Add to Home Screen</strong>. The installed app works offline and keeps your progress safer.
+          {tap}
+          <strong>{share}</strong>
+          {then}
+          <strong>{add}</strong>
+          {rest}
         </p>
       </div>
     );
@@ -194,27 +195,29 @@ function InstallApp() {
 function Settings() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [msg, setMsg] = useState('');
+  const t = useStrings();
+  const tr = useTranslateMessage();
 
   const upload = async (file: File) => {
     try {
       progress.import(await file.text());
-      setMsg('Progress imported.');
+      setMsg(t.progressImported);
     } catch (e) {
-      setMsg((e as Error).message);
+      setMsg(tr((e as Error).message));
     }
   };
 
   return (
     <section className="settings" id="settings">
-      <h2>Your progress</h2>
-      <p>Progress is saved in this browser. Export it to back it up or move it to another device.</p>
+      <h2>{t.yourProgress}</h2>
+      <p>{t.progressSaved}</p>
       <StorageStatus />
       <div className="row">
         <button type="button" className="btn ghost" onClick={downloadProgress}>
-          Export progress
+          {t.exportProgress}
         </button>
         <button type="button" className="btn ghost" onClick={() => fileRef.current?.click()}>
-          Import progress
+          {t.importProgress}
         </button>
         <input
           ref={fileRef}
@@ -223,12 +226,8 @@ function Settings() {
           hidden
           onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])}
         />
-        <button
-          type="button"
-          className="btn ghost danger"
-          onClick={() => confirm('Erase all progress and saved code?') && progress.reset()}
-        >
-          Reset
+        <button type="button" className="btn ghost danger" onClick={() => confirm(t.confirmReset) && progress.reset()}>
+          {t.reset}
         </button>
       </div>
       {msg && <p role="status">{msg}</p>}
