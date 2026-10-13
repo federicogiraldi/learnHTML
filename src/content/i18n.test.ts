@@ -38,7 +38,7 @@ describe('Italian translation', () => {
 
   it('only translates messages that the lessons really use', () => {
     const unescape = (s: string) => s.replace(/\\(['"\\])/g, '$1');
-    const sources = ['html', 'css', 'js']
+    const sources = ['html', 'css', 'js', 'sql']
       .flatMap((dir) => readdirSync(`src/content/${dir}`).filter((f) => /^\d\d-.*\.ts$/.test(f)).map((f) => `src/content/${dir}/${f}`))
       .map((f) => unescape(readFileSync(f, 'utf8')))
       .join('\n');
@@ -66,6 +66,9 @@ describe('Italian translation', () => {
     expect(translateMessage('Line 3: <p> (line 2) is never closed.', 'it')).toBe('Riga 3: <p> (riga 2) non viene mai chiuso.');
     expect(translateMessage('Expected at least 2 "h2", found 1.', 'it')).toBe('"h2": ne servono almeno 2, ce ne sono 1.');
     expect(translateMessage('Add a <p> paragraph.', 'it')).not.toBe('Add a <p> paragraph.');
+    expect(translateMessage('Line 3: no such column: nme', 'it')).toBe('Riga 3: colonna inesistente: nme');
+    expect(translateMessage('After your SQL: no such table: habits', 'it')).toBe('Dopo il tuo SQL: tabella inesistente: habits');
+    expect(translateMessage('The result should have 1 row, yours has 3.', 'it')).toBe('Il risultato deve avere 1 riga, il tuo ne ha 3.');
     expect(translateMessage('Something nobody wrote.', 'it')).toBe('Something nobody wrote.');
     expect(translateMessage('Add a <p> paragraph.', 'en')).toBe('Add a <p> paragraph.');
   });

@@ -1,7 +1,10 @@
-import { isCssLesson, isJsPageLesson, type Check, type Lesson } from '../content/types';
+import { isCssLesson, isJsPageLesson, type Check, type Lesson, type SqlRun } from '../content/types';
 import { validateCss } from './cssValidator';
 import { runInSandbox } from './js/sandbox';
 import { isJsCheck } from './jsChecks';
+import { runSql } from './sql/runner';
+import type { SqlResponse } from './sql/protocol';
+import { isSqlCheck } from './sqlChecks';
 import { renderPage } from './render';
 import { validate, type Issue } from './validator';
 
@@ -44,7 +47,11 @@ export function runTests(lesson: Pick<Lesson, 'tasks' | 'starterCss'>, code: str
   const results: TaskResult[] = lesson.tasks.map(({ text, check }) => {
     let r: true | string;
     try {
-      r = isJsCheck(check) ? 'This check needs the JavaScript runner.' : (check as Check)(doc, code, css);
+      r = isJsCheck(check)
+        ? 'This check needs the JavaScript runner.'
+        : isSqlCheck(check)
+          ? 'This check needs the SQL runner.'
+          : (check as Check)(doc, code, css);
     } catch (err) {
       r = `Check failed to run: ${(err as Error).message}`;
     }
@@ -82,4 +89,44 @@ export async function runJsTests(lesson: Lesson, files: JsFiles, signal?: AbortS
   if (page) results.push(wellFormed('Your HTML is well-formed (no structural errors).', issues));
   if (css !== undefined) results.push(wellFormed('Your CSS is valid (no syntax errors).', cssIssues));
   return { results, issues, cssIssues, allPassed: results.every((r) => r.passed) };
+}
+
+export interface SqlTestRun extends TestRun {
+  /** What the script did, for the results pane: null when the run didn't finish (stopped, engine failed). */
+  output: SqlResponse | null;
+  /** Why the run didn't finish. */
+  failure?: string;
+}
+
+/**
+ * Runs an SQL lesson's script on a new copy of its database, together with the extra queries of its checks, then
+ * judges every task. Also returns the statements' results and the tables, for the results pane.
+ */
+export async function runSqlTests(lesson: Lesson, script: string, signal?: AbortSignal): Promise<SqlTestRun> {
+  const checks = lesson.tasks.map(({ check }) => (isSqlCheck(check) ? check : null));
+  const out = await runSql({ setup: lesson.db ?? '', script, queries: checks.flatMap((c) => c?.queries ?? []), snapshot: true }, signal);
+  if ('failure' in out) {
+    const results = lesson.tasks.map(({ text }) => toResult(text, 'Not checked.'));
+    results.push({ ...toResult('Your SQL runs without errors.', out.failure), implicit: true });
+    return { results, issues: [], cssIssues: [], allPassed: false, output: null, failure: out.failure };
+  }
+
+  const run: SqlRun = { script, statements: out.statements, error: out.error };
+  let at = 0;
+  const results = lesson.tasks.map(({ text }, k) => {
+    const check = checks[k];
+    if (!check) return toResult(text, 'Not checked.');
+    const answers = out.answers.slice(at, at + check.queries.length);
+    at += check.queries.length;
+    let r: true | string;
+    try {
+      r = check.verify(run, answers);
+    } catch (err) {
+      r = `Check failed to run: ${(err as Error).message}`;
+    }
+    return toResult(text, r);
+  });
+  const runs = out.error ? `${out.error.line ? `Line ${out.error.line}: ` : ''}${out.error.message}` : true;
+  results.push({ ...toResult('Your SQL runs without errors.', runs), implicit: true });
+  return { results, issues: [], cssIssues: [], allPassed: results.every((r) => r.passed), output: out };
 }

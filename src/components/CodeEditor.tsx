@@ -3,11 +3,12 @@ import CodeMirror from '@uiw/react-codemirror';
 import { css } from '@codemirror/lang-css';
 import { html } from '@codemirror/lang-html';
 import { javascript } from '@codemirror/lang-javascript';
+import { sql, SQLite } from '@codemirror/lang-sql';
 import { Prec, type Extension } from '@codemirror/state';
 import { EditorView, keymap } from '@codemirror/view';
 import { editorTheme } from './editorTheme';
 
-export type EditorLanguage = 'html' | 'css' | 'js';
+export type EditorLanguage = 'html' | 'css' | 'js' | 'sql';
 
 // Auto-closing of tags and brackets is off on purpose: writing them yourself is part of learning,
 // and auto-inserted closers end up doubled when learners type their own.
@@ -15,11 +16,12 @@ const extensions: Record<EditorLanguage, Extension[]> = {
   html: [html({ autoCloseTags: false }), EditorView.lineWrapping],
   css: [css(), EditorView.lineWrapping],
   js: [javascript(), EditorView.lineWrapping],
+  sql: [sql({ dialect: SQLite, upperCaseKeywords: true }), EditorView.lineWrapping],
 };
 
-const labels: Record<EditorLanguage, string> = { html: 'HTML editor', css: 'CSS editor', js: 'JavaScript editor' };
+const labels: Record<EditorLanguage, string> = { html: 'HTML editor', css: 'CSS editor', js: 'JavaScript editor', sql: 'SQL editor' };
 
-export const fileNames: Record<EditorLanguage, string> = { html: 'index.html', css: 'style.css', js: 'script.js' };
+export const fileNames: Record<EditorLanguage, string> = { html: 'index.html', css: 'style.css', js: 'script.js', sql: 'query.sql' };
 
 export function CodeEditor({
   value,

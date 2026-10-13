@@ -14,13 +14,30 @@ export interface JsCheck {
   js: string;
 }
 
+/** What an SQL lesson's script did, for SQL checks. */
+export interface SqlRun {
+  script: string;
+  statements: StatementResult[];
+  error?: SqlError;
+}
+
+/**
+ * A check for SQL lessons: the extra queries it needs (run with the learner's script, see
+ * `src/engine/sql/protocol.ts`) and a function that judges their answers. Build them with `src/engine/sqlChecks.ts`.
+ */
+export interface SqlCheck {
+  queries: SqlQuery[];
+  verify: (run: SqlRun, answers: QueryAnswer[]) => CheckResult;
+}
+
 export interface Task {
   text: string;
-  check: Check | JsCheck;
+  check: Check | JsCheck | SqlCheck;
 }
 
 export type { FetchMock } from '../engine/js/runtime';
 import type { FetchMock } from '../engine/js/runtime';
+import type { QueryAnswer, SqlError, SqlQuery, StatementResult } from '../engine/sql/protocol';
 
 export interface Lesson {
   id: string;
@@ -44,6 +61,11 @@ export interface Lesson {
   fetchMocks?: Record<string, FetchMock>;
   /** JavaScript lessons: what localStorage holds when the checks run. */
   storage?: Record<string, string>;
+  /** Present on SQL lessons: the starting query.sql. */
+  starterSql?: string;
+  solutionSql?: string;
+  /** SQL lessons: the script that builds the lesson's database. Every run starts from a new copy of it. */
+  db?: string;
 }
 
 export interface Challenge extends Lesson {
@@ -64,7 +86,7 @@ export interface Module {
   challenge: Challenge;
 }
 
-export type CourseId = 'html' | 'css' | 'js';
+export type CourseId = 'html' | 'css' | 'js' | 'sql';
 
 export interface Course {
   id: CourseId;
@@ -78,3 +100,5 @@ export const isJsLesson = (l: Lesson) => l.starterJs !== undefined;
 export const isCssLesson = (l: Lesson) => l.starterCss !== undefined && !isJsLesson(l);
 /** A JavaScript lesson with a page (index.html), not just the console. */
 export const isJsPageLesson = (l: Lesson) => isJsLesson(l) && l.starterCode.trim() !== '';
+/** An SQL-course lesson: query.sql runs against the lesson's database. */
+export const isSqlLesson = (l: Lesson) => l.starterSql !== undefined;

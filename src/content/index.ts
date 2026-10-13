@@ -3,12 +3,13 @@ import type { ProgressState } from '../store/progress';
 import { htmlCourse } from './html';
 import { cssCourse } from './css';
 import { jsCourse } from './js';
+import { sqlCourse } from './sql';
 import { localizeCourse } from './localize';
 import { itCourses } from './it';
 import type { Lang } from '../i18n';
 
 /** The courses in English, the language they are written in. */
-export const courses: Course[] = [htmlCourse, cssCourse, jsCourse];
+export const courses: Course[] = [htmlCourse, cssCourse, jsCourse, sqlCourse];
 
 const localized: Record<Lang, Course[]> = {
   en: courses,

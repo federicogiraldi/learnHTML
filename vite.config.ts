@@ -20,7 +20,7 @@ export default defineConfig({
         id: './',
         name: 'LearnWeb',
         short_name: 'LearnWeb',
-        description: 'Learn HTML, CSS and JavaScript by writing it: lessons, a live preview and challenges.',
+        description: 'Learn HTML, CSS, JavaScript and SQL by writing it: lessons, a live preview and challenges.',
         lang: 'en',
         start_url: './',
         scope: './',
@@ -36,7 +36,8 @@ export default defineConfig({
       workbox: {
         // Only the app itself is precached. External images (picsum.photos) and Google Fonts used in lessons
         // have no runtime route either: they always come from the network.
-        globPatterns: ['**/*.{js,css,html,svg,png}'],
+        // The SQLite engine (sql-wasm-browser.wasm) is precached too, so SQL lessons work offline.
+        globPatterns: ['**/*.{js,css,html,svg,png,wasm}'],
         navigateFallback: 'index.html',
         cleanupOutdatedCaches: true,
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
@@ -45,7 +46,7 @@ export default defineConfig({
   ],
   build: { chunkSizeWarningLimit: 1000 },
   // Pre-bundled up front so the first test run doesn't reload when it discovers the dependency.
-  optimizeDeps: { include: ['@codemirror/lang-javascript'] },
+  optimizeDeps: { include: ['@codemirror/lang-javascript', '@codemirror/lang-sql', 'sql.js'] },
   test: {
     projects: [
       {
