@@ -114,6 +114,27 @@ const en = {
   consoleEmpty: 'Output from console.log() appears here.',
   noIssues: (html: boolean) => `✓ No ${html ? 'structural' : 'CSS'} errors`,
   line: (n: number) => `Line ${n}`,
+
+  // SQL results
+  tabResults: 'Results',
+  sqlResults: 'Results',
+  sqlTables: 'Tables',
+  sqlChecksOnRun: 'Your SQL runs by itself when you pause typing, or with Run (Ctrl+Enter). Every run starts again from the original data.',
+  sqlRunning: 'Running…',
+  sqlEmpty: 'Write a query: its results appear here.',
+  sqlNoRows: 'No rows match.',
+  sqlRows: (n: number) => `${n} ${plural(n, 'row', 'rows')}`,
+  sqlInserted: (n: number) => `${n} ${plural(n, 'row', 'rows')} inserted`,
+  sqlUpdated: (n: number) => `${n} ${plural(n, 'row', 'rows')} updated`,
+  sqlDeleted: (n: number) => `${n} ${plural(n, 'row', 'rows')} deleted`,
+  sqlCreated: 'Table created',
+  sqlDone: 'Done',
+  sqlFirstRows: (n: number) => `Only the first ${n} rows are shown.`,
+  sqlTablesNote: 'The database as it is after your SQL. Every run starts again from the original data.',
+  sqlNoTables: 'The database has no tables.',
+  sqlColumns: 'Columns',
+  sqlPrimaryKey: 'Primary key',
+  sqlQueryAt: (line: number) => `query.sql, line ${line}`,
 };
 
 export type Strings = typeof en;
@@ -226,6 +247,26 @@ const it: Strings = {
   consoleEmpty: 'Qui compare l’output di console.log().',
   noIssues: (html) => `✓ Nessun errore ${html ? 'strutturale' : 'CSS'}`,
   line: (n) => `Riga ${n}`,
+
+  tabResults: 'Risultati',
+  sqlResults: 'Risultati',
+  sqlTables: 'Tabelle',
+  sqlChecksOnRun: 'Il tuo SQL parte da solo quando smetti di scrivere, o con Esegui (Ctrl+Invio). Ogni esecuzione riparte dai dati originali.',
+  sqlRunning: 'Esecuzione…',
+  sqlEmpty: 'Scrivi una query: qui compaiono i risultati.',
+  sqlNoRows: 'Nessuna riga corrisponde.',
+  sqlRows: (n) => `${n} ${plural(n, 'riga', 'righe')}`,
+  sqlInserted: (n) => `${n} ${plural(n, 'riga inserita', 'righe inserite')}`,
+  sqlUpdated: (n) => `${n} ${plural(n, 'riga aggiornata', 'righe aggiornate')}`,
+  sqlDeleted: (n) => `${n} ${plural(n, 'riga eliminata', 'righe eliminate')}`,
+  sqlCreated: 'Tabella creata',
+  sqlDone: 'Fatto',
+  sqlFirstRows: (n) => `Sono mostrate solo le prime ${n} righe.`,
+  sqlTablesNote: 'Il database com’è dopo il tuo SQL. Ogni esecuzione riparte dai dati originali.',
+  sqlNoTables: 'Il database non ha tabelle.',
+  sqlColumns: 'Colonne',
+  sqlPrimaryKey: 'Chiave primaria',
+  sqlQueryAt: (line) => `query.sql, riga ${line}`,
 };
 
 export const strings: Record<Lang, Strings> = { en, it };

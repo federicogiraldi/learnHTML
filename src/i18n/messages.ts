@@ -42,6 +42,15 @@ const exact: Record<string, string> = {
   'Use let or const instead of var.': 'Usa let o const al posto di var.',
   'Call event.preventDefault() in the submit handler, or the page reloads.':
     'Chiama event.preventDefault() nel gestore del submit, altrimenti la pagina si ricarica.',
+  // SQL runner and checks
+  'Your SQL runs without errors.': 'Il tuo SQL viene eseguito senza errori.',
+  'This check needs the SQL runner.': 'Questa verifica ha bisogno dell’esecutore SQL.',
+  'The SQL engine couldn’t start. Reload the page to try again.': 'Il motore SQL non è partito. Ricarica la pagina per riprovare.',
+  'Write a SELECT query: its result is checked here.': 'Scrivi una query SELECT: qui viene verificato il suo risultato.',
+  'The rows are right, but not in the right order.': 'Le righe sono giuste, ma non nell’ordine giusto.',
+  // SQLite errors
+  'incomplete input': 'input incompleto: manca la fine della query?',
+  'a GROUP BY clause is required before HAVING': 'prima di HAVING serve una clausola GROUP BY',
 };
 
 const want = (s: string) =>
@@ -148,6 +157,35 @@ const rules: Rule[] = [
   [/^localStorage "(.+)" should be ([\s\S]+) \(now ([\s\S]+)\)\.$/, (m) => `localStorage "${m[1]}" dovrebbe essere ${m[2]} (ora ${m[3]}).`],
   [/^There is no "(.+)" element on the page\.$/, (m) => `Nella pagina non c’è nessun elemento "${m[1]}".`],
   [/^Fix the syntax error first \(line (.+)\)\.$/, (m) => `Correggi prima l’errore di sintassi (riga ${m[1]}).`],
+  // SQL runner and checks
+  [/^Stopped: your SQL ran for more than (\S+) seconds\.$/, (m) => `Fermato: il tuo SQL è andato avanti per più di ${m[1]} secondi.`],
+  [/^Write at least (\d+) SELECT queries: this task checks query (\d+)\.$/,
+    (m) => `Scrivi almeno ${m[1]} query SELECT: questo compito verifica la query ${m[2]}.`],
+  [/^The result should have (\d+) columns?, yours has (\d+)\.$/,
+    (m) => `Il risultato deve avere ${m[1]} ${m[1] === '1' ? 'colonna' : 'colonne'}, il tuo ne ha ${m[2]}.`],
+  [/^The result should have (\d+) rows?, yours has (\d+)\.$/,
+    (m) => `Il risultato deve avere ${m[1]} ${m[1] === '1' ? 'riga' : 'righe'}, il tuo ne ha ${m[2]}.`],
+  [/^After your SQL there should be (\d+) matching rows?, there are (\d+)\.$/,
+    (m) => `Dopo il tuo SQL ${m[1] === '1' ? 'dovrebbe esserci 1 riga corrispondente' : `dovrebbero esserci ${m[1]} righe corrispondenti`}, ce ne sono ${m[2]}.`],
+  [/^A row is missing from your result: ([\s\S]*)\.$/, (m) => `Nel tuo risultato manca una riga: ${m[1]}.`],
+  [/^This row shouldn’t be in your result: ([\s\S]*)\.$/, (m) => `Questa riga non dovrebbe essere nel tuo risultato: ${m[1]}.`],
+  [/^After your SQL, this row is missing: ([\s\S]*)\.$/, (m) => `Dopo il tuo SQL manca questa riga: ${m[1]}.`],
+  [/^After your SQL, this row shouldn’t be there: ([\s\S]*)\.$/, (m) => `Dopo il tuo SQL questa riga non dovrebbe esserci: ${m[1]}.`],
+  [/^After your SQL: ([\s\S]*)$/, (m, tr) => `Dopo il tuo SQL: ${tr(m[1])}`],
+  [/^Name the columns (.*) \(yours: (.*)\)\.$/, (m) => `Chiama le colonne ${m[1]} (le tue: ${m[2]}).`],
+  // SQLite errors
+  [/^no such column: (.+)$/, (m) => `colonna inesistente: ${m[1]}`],
+  [/^no such table: (.+)$/, (m) => `tabella inesistente: ${m[1]}`],
+  [/^no such function: (.+)$/, (m) => `funzione inesistente: ${m[1]}`],
+  [/^near "([\s\S]*)": syntax error$/, (m) => `errore di sintassi vicino a "${m[1]}"`],
+  [/^unrecognized token: ([\s\S]+)$/, (m) => `simbolo non riconosciuto: ${m[1]}`],
+  [/^ambiguous column name: (.+)$/, (m) => `nome di colonna ambiguo: ${m[1]} (scrivi tabella.colonna)`],
+  [/^(NOT NULL|UNIQUE|CHECK|FOREIGN KEY) constraint failed: ?(.*)$/, (m) => `vincolo ${m[1]} non rispettato${m[2] ? `: ${m[2]}` : ''}`],
+  [/^table (\S+) already exists$/, (m) => `la tabella ${m[1]} esiste già`],
+  [/^table (\S+) has (\d+) columns but (\d+) values were supplied$/,
+    (m) => `la tabella ${m[1]} ha ${m[2]} colonne, ma i valori sono ${m[3]}`],
+  [/^(\d+) values for (\d+) columns$/, (m) => `${m[1]} valori per ${m[2]} colonne`],
+  [/^misuse of aggregate( function)?: (.+)$/, (m) => `uso scorretto della funzione di aggregazione ${m[2]}`],
   // Lesson messages built from values
   [/^Check the points for (\w+)\.$/, (m) => `Controlla i punti di ${m[1]}.`],
   [/^The nav has no link to #(.*)\.$/, (m) => `Il nav non ha un link a #${m[1]}.`],

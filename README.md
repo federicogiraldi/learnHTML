@@ -1,7 +1,7 @@
 # LearnWeb
 
 Interactive courses for learning **HTML**, **CSS** and **JavaScript**, from your first tag to responsive, themed,
-interactive pages.
+interactive pages — plus a short **SQL** course for asking real databases questions.
 
 Each lesson explains one idea, then gives you a code editor, a live preview and a checklist that updates as
 you type. Every module ends with a challenge, scored with up to three stars.
@@ -47,6 +47,17 @@ you type. Every module ends with a challenge, scored with up to three stars.
 | 7 | Modern JavaScript | Bug hunt: the forgetful notes app (blind) |
 | 8 | Advanced JavaScript | Capstone: to-do app with filters and localStorage |
 
+### SQL — 4 modules, 16 lessons
+
+A short, hands-on course on a real SQLite database running in the browser.
+
+| # | Module | Challenge |
+|---|---|---|
+| 1 | Your First Queries (`SELECT`, `WHERE`, `ORDER BY`, `LIMIT`, `IN`/`BETWEEN`/`LIKE`/`NULL`) | Movie night picker |
+| 2 | Summarising Data (`COUNT`/`SUM`/`AVG`, `AS`, `ROUND`, `GROUP BY`, `HAVING`, `DISTINCT`) | The café’s weekly report |
+| 3 | Joining Tables (keys, `JOIN`, `LEFT JOIN`, joins + `GROUP BY`) | The library detective |
+| 4 | Changing Data (`INSERT`, `UPDATE`, `DELETE`, `CREATE TABLE`) | Tidy up the catalogue |
+
 *Blind* challenges reveal each requirement only once it passes. *Target* challenges show the design to recreate
 in a tab next to your preview.
 
@@ -54,6 +65,9 @@ CSS lessons have two files, `style.css` and `index.html`. JavaScript lessons are
 `script.js` and a console) or *page* lessons (`script.js`, `index.html` and sometimes `style.css`, with the page above
 the console). JavaScript runs when you press **Run** (or Ctrl+Enter), or by itself after a 1.5 s pause if the code
 parses — never half-typed. The **Playground** has all three files and the console.
+SQL lessons have one file, `query.sql`, and a results pane: one table per query, the rows each change touched, and a
+*Tables* tab with the whole database. SQL runs by itself after a 1 s pause (or with **Run** / Ctrl+Enter), and every run
+starts again from the lesson's original data.
 Progress and code are saved in your browser's localStorage; use *Export / Import progress* on the home page to
 move them to another device.
 
@@ -76,7 +90,8 @@ English in both languages, so the checks are the same.
 
 LearnWeb is a PWA (`vite-plugin-pwa`): it can be installed (*Install the app* under *Your progress*, or
 Share → *Add to Home Screen* on iPhone and iPad) and works offline after the first visit. Only the app itself is
-precached; images from picsum.photos and Google Fonts used in lessons always come from the network. A new version
+precached (including the SQLite engine, a `.wasm` file, so SQL lessons work offline too); images from picsum.photos
+and Google Fonts used in lessons always come from the network. A new version
 waits for a click on *Update* and saves the code you're editing before reloading.
 
 Icons in `public/icons` are generated from the `</>` logo with `npm run icons`.
@@ -97,10 +112,11 @@ install it with `npx playwright install chromium`.
 
 ## How it works
 
-- `src/content/html/*.ts`, `src/content/css/*.ts`, `src/content/js/*.ts` — one file per module. A lesson is
-  markdown, starter code (plus `starterCss` for CSS lessons, `starterJs` for JavaScript lessons), a list of tasks
-  (each with a check), hints and a solution. JavaScript lessons can add `fetchMocks` (fake API responses) and
-  `storage` (initial localStorage).
+- `src/content/html/*.ts`, `src/content/css/*.ts`, `src/content/js/*.ts`, `src/content/sql/*.ts` — one file per module.
+  A lesson is markdown, starter code (plus `starterCss` for CSS lessons, `starterJs` for JavaScript lessons, `starterSql`
+  for SQL lessons), a list of tasks (each with a check), hints and a solution. JavaScript lessons can add `fetchMocks`
+  (fake API responses) and `storage` (initial localStorage); SQL lessons have `db`, the script that builds their
+  database.
 - `src/engine/checks.ts` — DOM checks for HTML lessons (`hasElement`, `count`, `controlsLabelled`, …).
 - `src/engine/cssChecks.ts` — CSS checks: declared values (`declares`), computed styles (`computed`) and layout
   (`inOneRow`, `stacked`, `centeredIn`, `columns`, `atWidth` for media queries).
@@ -120,8 +136,16 @@ install it with `npx playwright install chromium`.
   sandbox after the learner's script, with timers and fake network delays sped up; `check(fn)` runs a custom function
   there, so it may only use its `h` argument. `runJsTests` (async) adds "runs without errors" plus the HTML/CSS
   validity checks for page lessons.
+- `src/engine/sql/` — the SQL runner. `worker.ts` runs [sql.js](https://sql.js.org) (SQLite compiled to WebAssembly) in a
+  Web Worker: every run builds a fresh database from the lesson's `db` script, runs `query.sql` statement by statement
+  (results, rows changed, the line of an error) and answers the checks' extra queries. `runner.ts` terminates the worker
+  when a run takes more than 3 s (a runaway recursive query can't freeze the app) and starts a new one on the next run.
+- `src/engine/sqlChecks.ts` — checks for SQL lessons. `returns(query)` compares the learner's result (columns, rows,
+  and order with `ordered`) with a reference query on a fresh copy of the database; `afterwards(probe, change)` compares
+  the data after the learner's script with the data after a reference change (for `INSERT`, `UPDATE`, `DELETE`,
+  `CREATE TABLE`); plus `columnsNamed`, `uses`, `avoids` and `all`. `runSqlTests` adds "runs without errors".
 - Every lesson's solution must pass all its tasks, and its starter code must not (`src/content/*.test.ts`). The e2e tests also run every
-  JavaScript solution in the production build.
+  JavaScript and SQL solution in the production build.
 - `src/i18n/` — the interface strings (`strings.ts`, English and Italian) and `messages.ts`, which translates check and
   validator messages: exact matches from the lessons first, then patterns for the engine's built-in messages; anything
   unknown stays in English.

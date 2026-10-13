@@ -6,12 +6,12 @@ import { useStrings } from '../i18n';
 const plugins = [remarkGfm];
 
 const tryItLanguage = (className: string): EditorLanguage | null => {
-  const m = /language-(html|css|js|javascript)\b/.exec(className);
+  const m = /language-(html|css|js|javascript|sql)\b/.exec(className);
   if (!m) return null;
   return m[1] === 'javascript' ? 'js' : (m[1] as EditorLanguage);
 };
 
-/** Lesson prose. Fenced ```html, ```css and ```js blocks get a "Try it" button that loads them into the editor. */
+/** Lesson prose. Fenced ```html, ```css, ```js and ```sql blocks get a "Try it" button that loads them into the editor. */
 export function Markdown({ source, onTryIt }: { source: string; onTryIt?: (code: string, lang: EditorLanguage) => void }) {
   const t = useStrings();
   return (

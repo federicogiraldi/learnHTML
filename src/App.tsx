@@ -70,6 +70,7 @@ export function App() {
           </NavLink>
           <NavLink to="/course/css">CSS</NavLink>
           <NavLink to="/course/js">JS</NavLink>
+          <NavLink to="/course/sql">SQL</NavLink>
           <NavLink to="/playground">Playground</NavLink>
         </nav>
         <div className="topbar-actions">
